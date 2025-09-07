@@ -1,0 +1,5 @@
+.env
+/.vs
+*.pyproj
+*.sln
+/__pycache__
