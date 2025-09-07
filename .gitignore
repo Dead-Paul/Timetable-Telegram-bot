@@ -3,3 +3,4 @@
 *.pyproj
 *.sln
 /__pycache__
+*.log
