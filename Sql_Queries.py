@@ -32,14 +32,14 @@ class DictTypes:
         weekday_id: int
         ring_id: int
         lesson_id: int
-        flasher_id: int | None
-        replacement_id: int | None
-        remind: str | None
+        flasher_id: int|None
+        replacement_id: int|None
+        remind: str|None
 
     class ComposedLessonDict(TypedDict):
         name: str
         link: str
-        remind: str | None
+        remind: str|None
 
 
 
