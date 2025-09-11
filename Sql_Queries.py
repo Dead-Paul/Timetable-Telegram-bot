@@ -7,6 +7,7 @@ from mysql.connector.cursor import MySQLCursorDict
 
 from JSON import JSON
 
+
 class DictTypes:
 
     class RingDict(TypedDict):
@@ -60,7 +61,7 @@ class Queries:
             self.logger.info("Якись користувач не був зареєстрований але змінив підписку. (Зараз зареєстрован)")
         self.cursor.execute("UPDATE `user` SET is_subscriber = %s WHERE id = %s", [is_subscriber, user_id])
 
-    def get_sticker_id(self, sticker_type: list[str] | str) -> str:
+    def get_sticker_id(self, sticker_type: list[str]|str) -> str:
         selected_type: str = random.choice(sticker_type) if isinstance(sticker_type, list) else sticker_type
         self.cursor.execute("SELECT id FROM `sticker` WHERE type = %s", [selected_type])
         selected_stickers: list[DictTypes.StickerDict] = cast(list[DictTypes.StickerDict], self.cursor.fetchall())
@@ -89,7 +90,7 @@ class Queries:
         return lesson
         
 
-    def compose_lesson(self, isoweekday: int, ring_id: int, date: datetime, enable_flasher_replacement: bool = False) -> DictTypes.ComposedLessonDict | None:
+    def compose_lesson(self, isoweekday: int, ring_id: int, date: datetime|None = None) -> DictTypes.ComposedLessonDict|None:
         self.cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [isoweekday, ring_id])
         timetable: DictTypes.TimetableDict | None = cast(DictTypes.TimetableDict, self.cursor.fetchone())
         if timetable is None:
@@ -103,15 +104,17 @@ class Queries:
             lesson: DictTypes.LessonDict = self.get_lesson(timetable["lesson_id"])
             flasher: DictTypes.LessonDict | None = self.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
 
-        if enable_flasher_replacement or isinstance(timetable["replacement_id"], int) or flasher is None:
-            try:
-                first_flasher_monday = datetime.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
-            except ValueError:
-                self.logger.error("Змінна \"first_flasher_monday\" не була знайдена в JSON файлі! Помилка не оброблена!")
-                raise 
+        if date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
 
-            if flasher is not None and not ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
-                lesson = flasher
+            if flasher is not None and isinstance(date, datetime):
+                try:
+                    first_flasher_monday = datetime.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
+                except ValueError:
+                    self.logger.error("Змінна \"first_flasher_monday\" не була знайдена в JSON файлі! Помилка не оброблена!")
+                    raise 
+                if ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
+                    lesson = flasher
+            
             composed_lesson: DictTypes.ComposedLessonDict = {
                 "name": f"<b><i>{lesson['name']}</i></b>",
                 "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
@@ -126,3 +129,6 @@ class Queries:
             "remind": timetable["remind"]
             }
         return composed_lesson
+
+if __name__ == "__main__":
+    exit()
