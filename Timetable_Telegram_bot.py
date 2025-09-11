@@ -9,7 +9,7 @@ from telebot import TeleBot, types
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from JSON import JSON
-from MySql import MySql
+from MySQL import MySql
 from Sql_Queries import Queries, DictTypes
 from Timetable_Functions import Timetable_Functions
 
