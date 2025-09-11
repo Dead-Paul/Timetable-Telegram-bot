@@ -1,7 +1,7 @@
 import json
 import os
 
-class JSON:
+class JSON_File:
     def __init__(self, filename: str):
         self.__filename = filename
         if not os.path.exists(filename):

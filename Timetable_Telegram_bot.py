@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 from telebot import TeleBot, types
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-from JSON import JSON
-from MySQL import MySql
-from SQL_Queries import Queries, DictTypes
-from Timetable_Functions import Timetable_Functions
+from modules.json_file import JSON_File
+from modules.my_sql import MySQL
+from modules.sql_queries import Queries, TableDicts
+from modules.timetable import Timetable
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ bot.set_my_commands(
 )
 
 try:
-    my_sql = MySql("bot", os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
+    my_sql = MySQL("bot", os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
 except KeyError as error:
     logger.critical("Деякі (або всі) параметри для підключення бази даних відсутні, перевірте їх наявність! (перевірте файл .env)")
     sys.exit(1)
@@ -50,7 +50,7 @@ except Exception as exception:
     sys.exit(1)
 
 try:
-    json_file = JSON(os.environ["JSON_FILENAME"])
+    json_file = JSON_File(os.environ["JSON_FILENAME"])
 except KeyError:
     logger.critical("Відсутня назва файлу JSON! (перевірте файл .env)")
     sys.exit(1)
@@ -60,7 +60,7 @@ except FileNotFoundError:
 
 queries = Queries(my_sql.cursor, logger, json_file)
 
-timetable_functions = Timetable_Functions(queries, logger, json_file)
+timetable = Timetable(queries, logger, json_file)
 
 def get_datetime() -> datetime:
     bot_timezone = json_file.get("timezone")
@@ -150,7 +150,7 @@ def timetable_msg(message: Message):
     bot.reply_to(message, 
         "\n\n".join(
             ["<b>Розклад:</b>\n"] +
-            [timetable_functions.get_timetable(weekday) for weekday in range(7)]
+            [timetable.get_timetable(weekday) for weekday in range(7)]
         ),
         disable_notification=True
     )
@@ -158,18 +158,18 @@ def timetable_msg(message: Message):
 
 @bot.message_handler(commands=["today"])
 def today_msg(message: Message):
-    bot.reply_to(message, timetable_functions.get_timetable(get_datetime()), disable_notification=True)
+    bot.reply_to(message, timetable.get_timetable(get_datetime()), disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 @bot.message_handler(commands=["tomorrow"])
 def tomorrow_msg(message: Message):
     today: datetime = get_datetime()
-    next_work_day: DictTypes.WeekdayDict|None = timetable_functions.get_next_workday(today.weekday())
+    next_work_day: TableDicts.WeekdayDict|None = timetable.get_next_workday(today.weekday())
     if next_work_day is not None:
         if (today.date() + timedelta(days=1)).isoweekday() != next_work_day['id']:
             bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
         bot.reply_to(message,
-            timetable_functions.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
+            timetable.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
             disable_notification=True
         )
     else:
