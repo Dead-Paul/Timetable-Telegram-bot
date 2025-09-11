@@ -11,7 +11,7 @@ from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from JSON import JSON
 from MySql import MySql
 from Sql_Queries import Queries, DictTypes
-from timetable_functions import Timetable_Functions
+from Timetable_Functions import Timetable_Functions
 
 
 logger = logging.getLogger(__name__)
