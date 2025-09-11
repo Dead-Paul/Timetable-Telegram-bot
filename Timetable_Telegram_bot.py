@@ -50,7 +50,7 @@ except Exception as exception:
     sys.exit(1)
 
 try:
-    json = JSON(os.environ["JSON_FILENAME"])
+    json_file = JSON(os.environ["JSON_FILENAME"])
 except KeyError:
     logger.critical("Відсутня назва файлу JSON! (перевірте файл .env)")
     sys.exit(1)
@@ -58,12 +58,12 @@ except FileNotFoundError:
     logger.critical("Файл JSON не був знайден!")
     sys.exit(1)
 
-queries = Queries(my_sql.cursor, logger, json)
+queries = Queries(my_sql.cursor, logger, json_file)
 
-timetable_functions = Timetable_Functions(queries)
+timetable_functions = Timetable_Functions(queries, logger, json_file)
 
 def get_datetime() -> datetime:
-    bot_timezone = json.get("timezone")
+    bot_timezone = json_file.get("timezone")
     if not isinstance(bot_timezone, str):
         logger.info(f"В файлі JSON не знайдено значення ключа timezone. (перевірте файл {os.environ['JSON_FILENAME']})")
         return datetime.now()
@@ -150,7 +150,7 @@ def timetable_msg(message: Message):
     bot.reply_to(message, 
         "\n\n".join(
             ["<b>Розклад:</b>\n"] +
-            [timetable_functions.get_timetable(weekday=weekday) for weekday in range(7)]
+            [timetable_functions.get_timetable(weekday) for weekday in range(7)]
         ),
         disable_notification=True
     )
@@ -158,7 +158,7 @@ def timetable_msg(message: Message):
 
 @bot.message_handler(commands=["today"])
 def today_msg(message: Message):
-    bot.reply_to(message, timetable_functions.get_timetable(date=get_datetime()), disable_notification=True)
+    bot.reply_to(message, timetable_functions.get_timetable(get_datetime()), disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 @bot.message_handler(commands=["tomorrow"])
@@ -169,7 +169,7 @@ def tomorrow_msg(message: Message):
         if (today.date() + timedelta(days=1)).isoweekday() != next_work_day['id']:
             bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
         bot.reply_to(message,
-            timetable_functions.get_timetable(date=today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
+            timetable_functions.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
             disable_notification=True
         )
     else:

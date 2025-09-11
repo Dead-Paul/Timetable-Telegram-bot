@@ -88,47 +88,10 @@ class Queries:
             self.logger.error(f"Заняття з айді {lesson_id} не було знайдено в базі даних!")
             raise ValueError
         return lesson
-        
 
-    def compose_lesson(self, isoweekday: int, ring_id: int, date: datetime|None = None) -> DictTypes.ComposedLessonDict|None:
-        self.cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [isoweekday, ring_id])
-        timetable: DictTypes.TimetableDict | None = cast(DictTypes.TimetableDict, self.cursor.fetchone())
-        if timetable is None:
-            return None
-
-        if isinstance(timetable["replacement_id"], int):
-            lesson: DictTypes.LessonDict = self.get_lesson(timetable["replacement_id"])
-            lesson["name"] += " (заміна)"
-            flasher = None
-        else:
-            lesson: DictTypes.LessonDict = self.get_lesson(timetable["lesson_id"])
-            flasher: DictTypes.LessonDict | None = self.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
-
-        if date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
-
-            if flasher is not None and isinstance(date, datetime):
-                try:
-                    first_flasher_monday = datetime.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
-                except ValueError:
-                    self.logger.error("Змінна \"first_flasher_monday\" не була знайдена в JSON файлі! Помилка не оброблена!")
-                    raise 
-                if ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
-                    lesson = flasher
-            
-            composed_lesson: DictTypes.ComposedLessonDict = {
-                "name": f"<b><i>{lesson['name']}</i></b>",
-                "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
-                "remind": timetable["remind"]
-                }
-            return composed_lesson
-
-        composed_lesson: DictTypes.ComposedLessonDict = {
-            "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
-            "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
-                     f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
-            "remind": timetable["remind"]
-            }
-        return composed_lesson
+    def get_timetable_row(self, weekday_id: int, ring_id: int) -> DictTypes.TimetableDict|None:
+        self.cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [weekday_id, ring_id])
+        return cast(DictTypes.TimetableDict, self.cursor.fetchone())
 
 if __name__ == "__main__":
     exit()
