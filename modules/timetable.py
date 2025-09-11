@@ -23,7 +23,7 @@ class Timetable:
         return None
 
 
-    def compose_lesson(self, isoweekday: int, lesson_number: int, date: datetime|None = None) -> TimetableDicts.ComposedLessonDict|None:
+    def get_lesson(self, isoweekday: int, lesson_number: int, date: datetime|None = None) -> TimetableDicts.LessonDict|None:
         timetable: TableDicts.TimetableDict|None = cast(TableDicts.TimetableDict, self.queries.get_timetable_row(isoweekday, lesson_number))
         if timetable is None:
             return None
@@ -47,14 +47,14 @@ class Timetable:
                 if ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
                     lesson = flasher
             
-            composed_lesson: TimetableDicts.ComposedLessonDict = {
+            composed_lesson: TimetableDicts.LessonDict = {
                 "name": f"<b><i>{lesson['name']}</i></b>",
                 "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
                 "remind": timetable["remind"]
                 }
             return composed_lesson
 
-        composed_lesson: TimetableDicts.ComposedLessonDict = {
+        composed_lesson: TimetableDicts.LessonDict = {
             "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
             "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
                      f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
@@ -81,7 +81,7 @@ class Timetable:
         else:
             timetable = list()
             for ring_id in range(1, len(self.queries.get_rings_schedule()) + 1):
-                lesson = self.compose_lesson(weekday['id'], ring_id, date)
+                lesson = self.get_lesson_dict(weekday['id'], ring_id, date)
                 timetable.append(f"{' ' * 4}{ring_id}. {lesson['name'] if lesson is not None else 'Не знайдено! (≧﹏ ≦)'}")
             return f"{' ' * 2}<b>{weekday['name']}</b>:\n" + ";\n".join(timetable) + '.'
 

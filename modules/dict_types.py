@@ -30,7 +30,7 @@ class TableDicts:
         remind: str|None
 
 class TimetableDicts:
-    class ComposedLessonDict(TypedDict):
+    class LessonDict(TypedDict):
         name: str
         link: str
         remind: str|None
