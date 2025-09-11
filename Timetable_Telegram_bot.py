@@ -2,7 +2,7 @@
 import sys
 import logging
 from zoneinfo import ZoneInfo
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot
@@ -10,13 +10,13 @@ from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from JSON import JSON
 from MySql import MySql
-
+from Sql_Queries import Queries, DictTypes
+from timetable_functions import Timetable_Functions
 
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.FileHandler("bot_log.log", 'w', encoding="UTF-8"))
 logging.basicConfig(level=logging.INFO, format="|%(asctime)s| %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-
 
 load_dotenv(override=True)
 try:
@@ -38,7 +38,6 @@ except Exception as exception:
     logger.critical(f"Помилка при підключенні до бази даних: \"{exception}\"")
     sys.exit(1)
 
-
 try:
     json = JSON(os.environ["JSON_FILENAME"])
 except KeyError:
@@ -47,6 +46,10 @@ except KeyError:
 except FileNotFoundError:
     logger.critical("Файл JSON не був знайден!")
     sys.exit(1)
+
+queries = Queries(my_sql.cursor, logger, json)
+
+timetable_functions = Timetable_Functions(queries)
 
 def get_datetime() -> datetime:
     bot_timezone = json.get("timezone")
@@ -59,6 +62,116 @@ logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' 
 
 
 
+def subscribtion_act(message: Message):
+    def set_subscribtion(message: Message):
+        match message.text:
+            case "Робити":
+                queries.set_subscription(message.chat.id, True)
+                bot.reply_to(message, "Добре, <b><i>розсилка увімкнена!</i></b>", reply_markup=ReplyKeyboardRemove())
+            case "Не робити":
+                queries.set_subscription(message.chat.id, False)
+                bot.reply_to(message, "Гаразд, <b><i>розсилка вимкнена...</i></b>", reply_markup=ReplyKeyboardRemove())
+            case _:
+                bot.reply_to(message, "Я очікувала від тебе іншого повідомлення, <b><i>розсилка не змінена...</i></b>", reply_markup=ReplyKeyboardRemove())
+
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("Робити", "Не робити")
+    bot.register_next_step_handler(
+        bot.reply_to(message,"<b>Мені робити розсилку в цей чат?</b> \n(☆▽☆)", reply_markup=markup, disable_notification=True),
+        set_subscribtion
+    )
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["service", "study"]), disable_notification=True)
+
+@bot.message_handler(commands=["start"], chat_types=["private"])
+def private_start_msg(message: Message):
+    assert message.from_user is not None
+    bot.reply_to(message, f"<b><i>Вітаю, {message.from_user.first_name}!</i></b> \n(p≧w≦q)")
+
+    if queries.is_new_user(message.from_user.id):
+        bot.send_message(message.chat.id, 
+            "Оскільки ти пишеш мені вперше – я хочу розповісти тобі, що таке розсилка <i>(у мене)</i>.\n\n"
+            "<b><i>Розсилка – це сповіщення про початок та кінець кожного заняття, яке внесене до розкладу в цей чат.\n\n"
+            "Я надсилатиму тобі повідомлення з назвою заняття, посиланням на клас та посиланням на саме заняття.\n"
+            "Якщо на занятті має відбутися щось важливе – адміністратори, швидше за все, додадуть нагадування про це.\n"
+            "Все це я обов’язково надішлю тобі </i><u>за три хвилини до початку заняття!</u><i>\n"
+            "А після завершення одного заняття я надсилатиму тобі назву наступного та час його проведення.</i></b>"
+        )
+
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "study"]), disable_notification=True)
+    subscribtion_act(message)
+        
+@bot.message_handler(commands=["start"], chat_types=["group", "supergroup"])
+def group_start_msg(message : Message):
+    bot.reply_to(message, f"<b><i>Вітаю, {bot.get_chat(message.chat.id).title}!</i></b> \n(p≧w≦q)")
+
+    if queries.is_new_user(message.chat.id):
+        bot.send_message(message.chat.id, 
+            "Оскільки у вашій групі я вперше – хочу розповісти, що таке розсилка <i>(у мене)</i>. \n\n"
+            "<b><i>Розсилка – це сповіщення про початок і кінець кожного заняття, яке занесене в розклад цього чату.\n\n"
+            "Я буду надсилати тобі повідомлення з назвою заняття, посиланням на клас і посиланням на саме заняття.\n"
+            "Якщо на занятті має відбутися щось важливе – адміни, скоріш за все, додадуть нагадування про це.\n"
+            "Усе це я обов’язково надішлю </i><u>за три хвилини до початку заняття!</u><i>\n"
+            "А після завершення одного заняття я надсилатиму назву наступного та час його проведення.</i></b>"
+        )
+
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "happy"]), disable_notification=True)
+    subscribtion_act(message)
 
 
-bot.infinity_polling()
+@bot.message_handler(commands=["rings"])
+def rings_msg(message : Message):
+    rings = queries.get_rings_schedule()
+    
+    bot.reply_to(message, 
+        ";\n".join(
+            [
+                f"{ring['id']} {ring['name'].split(' ')[1]}: <b><i>{ring['start'].strftime('%H:%M')} - {ring['end'].strftime('%H:%M')}</i></b>" 
+                for ring in rings
+            ]
+        ) + '.',
+        disable_notification=True
+    )
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
+
+
+@bot.message_handler(commands=["timetable"])
+def timetable_msg(message: Message):
+    bot.reply_to(message, 
+        "\n\n".join(
+            ["<b>Розклад:</b>\n"] +
+            [timetable_functions.get_timetable(weekday=weekday) for weekday in range(7)]
+        ),
+        disable_notification=True
+    )
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
+
+@bot.message_handler(commands=["today"])
+def today_msg(message: Message):
+    bot.reply_to(message, timetable_functions.get_timetable(date=get_datetime()), disable_notification=True)
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
+
+@bot.message_handler(commands=["tomorrow"])
+def tomorrow_msg(message: Message):
+    today: datetime = get_datetime()
+    next_work_day: DictTypes.WeekdayDict|None = timetable_functions.get_next_workday(today.weekday())
+    if next_work_day is not None:
+        if (today.date() + timedelta(days=1)).isoweekday() != next_work_day['id']:
+            bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
+        bot.reply_to(message,
+            timetable_functions.get_timetable(date=today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
+            disable_notification=True
+        )
+    else:
+        bot.send_message(message.chat.id, "Не знайдено жодного робочого дня, <b>скоріше за все у вас канікули</b>! \n（￣︶￣）",
+                          disable_notification=True)
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
+
+
+
+@bot.message_handler(commands=["test"])
+def test_msg(message: Message):
+    pass
+
+
+
+bot.infinity_polling()  
