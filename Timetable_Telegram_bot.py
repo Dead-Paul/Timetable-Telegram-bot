@@ -173,10 +173,8 @@ def tomorrow_msg(message: Message):
             disable_notification=True
         )
     else:
-        bot.send_message(message.chat.id, "Не знайдено жодного робочого дня, <b>скоріше за все у вас канікули</b>! \n（￣︶￣）",
-                          disable_notification=True)
+        bot.reply_to(message, "Не знайдено жодного робочого дня, <b>скоріше за все у вас канікули</b>! \n（￣︶￣）", disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
-
 
 
 @bot.message_handler(commands=["test"])
