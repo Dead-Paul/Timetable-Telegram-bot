@@ -37,7 +37,7 @@ class Queries:
             raise ValueError
         return cast(str, random.choice(selected_stickers)["id"])
 
-    def get_rings_schedule(self) -> list[TableDicts.RingDict]:
+    def get_rings(self) -> list[TableDicts.RingDict]:
         self.cursor.execute("SELECT * FROM `ring`")
         return cast(list[TableDicts.RingDict], self.cursor.fetchall())
 

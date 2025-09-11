@@ -131,7 +131,7 @@ def group_start_msg(message : Message):
 
 @bot.message_handler(commands=["rings"])
 def rings_msg(message : Message):
-    rings = queries.get_rings_schedule()
+    rings = queries.get_rings()
     
     bot.reply_to(message, 
         ";\n".join(
@@ -185,4 +185,4 @@ def test_msg(message: Message):
 
 
 
-bot.infinity_polling()  
+bot.infinity_polling()
