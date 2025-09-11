@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from functools import singledispatchmethod
 
 from JSON import JSON
-from Sql_Queries import Queries, DictTypes 
+from SQL_Queries import Queries, DictTypes 
 
 
 class Timetable_Functions:
