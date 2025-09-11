@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from telebot import TeleBot
+from telebot import TeleBot, types
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from JSON import JSON
@@ -28,6 +28,17 @@ except ValueError:
     logger.critical("Токен бота не валідний!")
     sys.exit(1)
 logger.info("Бот почав роботу!")
+
+bot.set_my_commands(
+    [
+        types.BotCommand("start", "Перезапустити бота"),
+        types.BotCommand("rings", "Переглянути розклад дзвінків"),
+        types.BotCommand("today", "Переглянути розклад на сьогодні"),
+        types.BotCommand("tomorrow", "Переглянути розклад на завтра"),
+        types.BotCommand("timetable", "Переглянути розклад занять на тиждень")
+    ],
+    types.BotCommandScopeDefault()
+)
 
 try:
     my_sql = MySql("bot", os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
