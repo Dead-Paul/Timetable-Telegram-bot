@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import TypedDict
 from datetime import datetime
 
@@ -34,3 +35,7 @@ class TimetableDicts:
         name: str
         link: str
         remind: str|None
+
+    class FoundLessonDict(TypedDict):
+        lesson: "TimetableDicts.LessonDict|str|NoneType"
+        ring: TableDicts.RingDict|None
