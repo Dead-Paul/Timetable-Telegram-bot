@@ -4,8 +4,8 @@ from typing import cast
 
 from mysql.connector.cursor import MySQLCursorDict
 
-from json_file import JSON_File
-from dict_types import TableDicts
+from .json_file import JSON_File
+from .dict_types import TableDicts
 
 class Queries:
     def __init__(self, cursor: MySQLCursorDict, logger: logging.Logger, json_file: JSON_File):
@@ -56,6 +56,3 @@ class Queries:
     def get_timetable_row(self, weekday_id: int, ring_id: int) -> TableDicts.TimetableDict|None:
         self.cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [weekday_id, ring_id])
         return cast(TableDicts.TimetableDict, self.cursor.fetchone())
-
-if __name__ == "__main__":
-    exit()
