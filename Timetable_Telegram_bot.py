@@ -1,7 +1,6 @@
 ﻿import os
 import sys
 import logging
-from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -12,6 +11,7 @@ from modules.json_file import JSON_File
 from modules.my_sql import MySQL
 from modules.sql_queries import Queries, TableDicts
 from modules.timetable import Timetable, TimetableDicts
+from utils import Utils
 
 
 logger = logging.getLogger(__name__)
@@ -63,14 +63,10 @@ queries = Queries(my_sql.cursor, logger, json_file)
 
 timetable = Timetable(queries, logger, json_file)
 
-def get_datetime() -> datetime:
-    bot_timezone = json_file.get("timezone")
-    if not isinstance(bot_timezone, str):
-        logger.info(f"В файлі JSON не знайдено значення ключа timezone. (перевірте файл {os.environ['JSON_FILENAME']})")
-        return datetime.now()
-    return datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo(bot_timezone))
-logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' ', timespec='seconds')}")
+utils = Utils(json_file, logger)
 
+get_datetime = utils.get_datetime
+logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' ', timespec='seconds')}")
 
 
 
