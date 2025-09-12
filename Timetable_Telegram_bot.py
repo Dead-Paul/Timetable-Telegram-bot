@@ -11,7 +11,7 @@ from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from modules.json_file import JSON_File
 from modules.my_sql import MySQL
 from modules.sql_queries import Queries, TableDicts
-from modules.timetable import Timetable
+from modules.timetable import Timetable, TimetableDicts
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,8 @@ bot.set_my_commands(
         types.BotCommand("rings", "Переглянути розклад дзвінків"),
         types.BotCommand("today", "Переглянути розклад на сьогодні"),
         types.BotCommand("tomorrow", "Переглянути розклад на завтра"),
-        types.BotCommand("timetable", "Переглянути розклад занять на тиждень")
+        types.BotCommand("timetable", "Переглянути розклад занять на тиждень"),
+        types.BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
     ],
     types.BotCommandScopeDefault()
 )
@@ -177,10 +178,24 @@ def tomorrow_msg(message: Message):
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 
-@bot.message_handler(commands=["test"])
-def test_msg(message: Message):
-    pass
-
+@bot.message_handler(commands=["current_lesson"])
+def current_lesson_msg(message: Message):
+    current_lesson: TimetableDicts.FoundLessonDict = timetable.find_lesson(get_datetime())
+    if current_lesson["lesson"] is None:
+        bot.reply_to(message, "Скоріш за все, зараз немає заняття, хоч за розкладом дзвінков воно і має бути ┗( T﹏T )┛")
+    assert current_lesson["lesson"] is not None
+    if current_lesson["ring"] is None:
+        assert isinstance(current_lesson["lesson"], str)
+        bot.reply_to(message, current_lesson["lesson"])
+        bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
+    else:
+        assert isinstance(current_lesson["ring"], dict)
+        assert isinstance(current_lesson["lesson"], dict)
+        bot.reply_to(message, 
+            f"<b>З {current_lesson['ring']['start'].strftime('%H:%M')} по {current_lesson['ring']['end'].strftime('%H:%M')}:</b> "
+            f"{current_lesson['lesson']['name']}{current_lesson['lesson']['link']}" + (current_lesson['lesson']['remind'] or "")
+        ) 
+        bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
 
 bot.infinity_polling()
