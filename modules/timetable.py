@@ -1,6 +1,6 @@
 ﻿from logging import Logger
 from typing import overload, cast
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import singledispatchmethod
 
 from .json_file import JSON_File
@@ -38,7 +38,6 @@ class Timetable:
             flasher: TableDicts.LessonDict|None = self.queries.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
 
         if date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
-
             if flasher is not None and isinstance(date, datetime):
                 try:
                     first_flasher_monday = datetime.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
@@ -46,74 +45,43 @@ class Timetable:
                     self.logger.error("Змінна \"first_flasher_monday\" не була знайдена в JSON файлі! Помилка не оброблена!")
                     raise 
                 if ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
-                    lesson = flasher
-            
-            return cast(
-                TimetableDicts.LessonDict, 
-                {
-                    "name": f"<b><i>{lesson['name']}</i></b>",
-                    "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
-                    "remind": remind
-                }
-            )
-
-        return cast(
-            TimetableDicts.LessonDict, 
-            {
-                "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
-                "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
-                         f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
+                    lesson = flasher            
+            return  {
+                "name": f"<b><i>{lesson['name']}</i></b>",
+                "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
                 "remind": remind
             }
-        )
+
+        return {
+            "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
+            "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
+                        f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
+            "remind": remind
+        }
+
+    def get_rings(self, target_date: date) -> list[TableDicts.RingDict]:
+        rings: list[TableDicts.RingDict] = self.queries.get_rings()
+        for ring in rings:
+            for key in ["start", "end"]:
+                ring[key] = datetime.combine(target_date, ring[key].time())
+        return rings
 
 
     def find_lesson(self, date_time: datetime) -> TimetableDicts.FoundLessonDict:
         date_time = date_time.replace(tzinfo=None)
-        rings: list[TableDicts.RingDict] = self.queries.get_rings()
+        rings: list[TableDicts.RingDict] = self.get_rings(date_time.date())
         if not self.queries.get_weekdays()[date_time.weekday()]["is_work_day"]:
-            return cast(
-                TimetableDicts.FoundLessonDict,
-                {
-                    "lesson": "Сьогодні вихідний! Відпочиньте (p≧w≦q)", 
-                    "ring": None
-                }
-            )
-        if datetime.combine(date_time, (rings[0]["start"] - timedelta(minutes=5)).time()) > date_time:
-            return cast(
-                TimetableDicts.FoundLessonDict,
-                {
-                    "lesson": "Ще дуже рано! Відпочиньте ( *︾▽︾)", 
-                    "ring": None
-                }
-            )
-        if datetime.combine(date_time, rings[-1]["end"].time()) < date_time:
-            return cast(
-                TimetableDicts.FoundLessonDict,
-                {
-                    "lesson": "Заняття вже закінчились! Відпочиньте o(*^▽^*)┛", 
-                    "ring": None
-                }
-            )
+            return {"lesson": "Сьогодні вихідний! Відпочиньте (p≧w≦q)", "ring": None}
+        if (rings[0]["start"] - timedelta(minutes=5)) > date_time:
+            return {"lesson": "Ще дуже рано! Відпочиньте ( *︾▽︾)", "ring": None}
+        if rings[-1]["end"] < date_time:
+            return {"lesson": "Заняття вже закінчились! Відпочиньте o(*^▽^*)┛", "ring": None}
         for ring in rings:
-            if (datetime.combine(date_time, (ring["start"] - timedelta(minutes=5)).time()) < date_time
-            and date_time < datetime.combine(date_time, ring["end"].time())):
+            if (ring["start"] - timedelta(minutes=5)) < date_time < ring["end"]:
                 break
         else:
-            return cast(
-                TimetableDicts.FoundLessonDict,
-                {
-                    "lesson": "Зараз перерва, відпочиньте! ლ(╹◡╹ლ)", 
-                    "ring": None
-                }
-            )
-        return cast(
-            TimetableDicts.FoundLessonDict,
-            {
-                "lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time),
-                "ring": ring
-            }
-        )
+            return {"lesson": "Зараз перерва, відпочиньте! ლ(╹◡╹ლ)", "ring": None}
+        return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time), "ring": ring}
 
 
     @overload
