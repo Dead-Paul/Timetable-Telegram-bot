@@ -22,7 +22,7 @@ class Timetable:
                 return weekdays[day_index]
         return None
 
-    def get_lesson(self, isoweekday: int, lesson_number: int, date: datetime|None = None) -> TimetableDicts.LessonDict|None:
+    def get_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None = None) -> TimetableDicts.LessonDict|None:
         timetable: TableDicts.TimetableDict|None = cast(TableDicts.TimetableDict, self.queries.get_timetable_row(isoweekday, lesson_number))
         if timetable is None:
             return None
@@ -37,14 +37,14 @@ class Timetable:
             lesson: TableDicts.LessonDict = self.queries.get_lesson(timetable["lesson_id"])
             flasher: TableDicts.LessonDict|None = self.queries.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
 
-        if date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
-            if flasher is not None and isinstance(date, datetime):
+        if target_date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
+            if flasher is not None and isinstance(target_date, date):
                 try:
-                    first_flasher_monday = datetime.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
+                    first_flasher_monday = date.fromisoformat(cast(str, self.json_file.get("first_flasher_monday")))
                 except ValueError:
                     self.logger.error("Змінна \"first_flasher_monday\" не була знайдена в JSON файлі! Помилка не оброблена!")
                     raise 
-                if ((date.replace(tzinfo=None) - timedelta(days=date.weekday()) - first_flasher_monday).days // 7) % 2:
+                if ((target_date - timedelta(days=target_date.weekday()) - first_flasher_monday).days // 7) % 2:
                     lesson = flasher            
             return  {
                 "name": f"<b><i>{lesson['name']}</i></b>",
@@ -85,7 +85,7 @@ class Timetable:
 
 
     @overload
-    def get_timetable(self, date: datetime) -> str:
+    def get_timetable(self, target_date: date) -> str:
         ...
 
     @overload
@@ -96,18 +96,18 @@ class Timetable:
     def get_timetable(self, _) -> str:
         raise ValueError("Має бути задан тільки один аргумент, або datetime, або int!")
 
-    def __get_timetable(self, weekday: TableDicts.WeekdayDict, date: datetime|None) -> str:
+    def __get_timetable(self, weekday: TableDicts.WeekdayDict, target_date: date|None) -> str:
         if not weekday["is_work_day"]:
             return f"{' ' * 2}<b>{weekday['name']}</b>:\n{' ' * 4}<b><i>Вихідний!</i></b> ヾ(≧▽≦*)o"
         else:
             timetable = list()
             for ring_id in range(1, len(self.queries.get_rings()) + 1):
-                lesson = self.get_lesson(weekday['id'], ring_id, date)
+                lesson = self.get_lesson(weekday['id'], ring_id, target_date)
                 timetable.append(f"{' ' * 4}{ring_id}. {lesson['name'] if lesson is not None else 'Не знайдено! (≧﹏ ≦)'}")
             return f"{' ' * 2}<b>{weekday['name']}</b>:\n" + ";\n".join(timetable) + '.'
 
     @get_timetable.register
-    def _(self, date: datetime) -> str:
+    def _(self, date: date) -> str:
         return self.__get_timetable(self.queries.get_weekdays()[date.weekday()], date)
 
     @get_timetable.register

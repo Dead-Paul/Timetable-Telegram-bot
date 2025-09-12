@@ -2,7 +2,7 @@
 import sys
 import logging
 from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
@@ -159,15 +159,15 @@ def timetable_msg(message: Message):
 
 @bot.message_handler(commands=["today"])
 def today_msg(message: Message):
-    bot.reply_to(message, timetable.get_timetable(get_datetime()), disable_notification=True)
+    bot.reply_to(message, timetable.get_timetable(get_datetime().date()), disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 @bot.message_handler(commands=["tomorrow"])
 def tomorrow_msg(message: Message):
-    today: datetime = get_datetime()
+    today: date = get_datetime().date()
     next_work_day: TableDicts.WeekdayDict|None = timetable.get_next_workday(today.weekday())
     if next_work_day is not None:
-        if (today.date() + timedelta(days=1)).isoweekday() != next_work_day['id']:
+        if (today + timedelta(days=1)).isoweekday() != next_work_day['id']:
             bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
         bot.reply_to(message,
             timetable.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
