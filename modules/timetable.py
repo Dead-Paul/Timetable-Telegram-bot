@@ -103,10 +103,22 @@ class Timetable:
             return f"{' ' * 2}<b>{weekday['name']}</b>:\n{' ' * 4}<b><i>Вихідний!</i></b> ヾ(≧▽≦*)o"
         else:
             timetable = list()
-            for ring_id in range(1, len(self.queries.get_rings()) + 1):
-                lesson = self.get_lesson(weekday['id'], ring_id, target_date)
-                timetable.append(f"{' ' * 4}{ring_id}. {lesson['name'] if lesson is not None else 'Не знайдено! (≧﹏ ≦)'}")
-            return f"{' ' * 2}<b>{weekday['name']}</b>:\n" + ";\n".join(timetable) + '.'
+            rings_count: int = len(self.queries.get_rings())
+            for ring_id in range(1, rings_count + 1):
+                lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday['id'], ring_id, target_date)
+                if lesson is not None:
+                    if lesson["lesson_id"] == 1:
+                        for next_ring_id in range(ring_id, rings_count + 1):
+                            next_lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday['id'], next_ring_id, target_date)
+                            if next_lesson is not None and next_lesson["lesson_id"] != 1:
+                                break
+                        else:
+                            break
+                    timetable.append(f"{' ' * 4}{ring_id}. {lesson['name']}")
+                else:
+                    timetable.append(f"{' ' * 4}{ring_id}. Не знайдено! (≧﹏ ≦)")
+            return (f"{' ' * 2}<b>{weekday['name']}</b>:\n" +
+                    ((";\n".join(timetable) + '.') if len(timetable) > 0 else f"{' ' * 4}<b><i>Вихідний!</i></b> ヾ(≧▽≦*)o"))
 
     @get_timetable.register
     def _(self, date: date) -> str:
