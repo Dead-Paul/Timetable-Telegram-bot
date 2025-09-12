@@ -3,9 +3,9 @@ from typing import overload, cast
 from datetime import datetime, timedelta
 from functools import singledispatchmethod
 
-from json_file import JSON_File
-from sql_queries import Queries
-from dict_types import TableDicts, TimetableDicts
+from .json_file import JSON_File
+from .sql_queries import Queries
+from .dict_types import TableDicts, TimetableDicts
 
 class Timetable:
     def __init__(self, queries: Queries, logger: Logger, json_file: JSON_File):
@@ -22,11 +22,12 @@ class Timetable:
                 return weekdays[day_index]
         return None
 
-
     def get_lesson(self, isoweekday: int, lesson_number: int, date: datetime|None = None) -> TimetableDicts.LessonDict|None:
         timetable: TableDicts.TimetableDict|None = cast(TableDicts.TimetableDict, self.queries.get_timetable_row(isoweekday, lesson_number))
         if timetable is None:
             return None
+
+        remind: str|None = None if timetable["remind"] is None else f"\n\nНагадування:\n{timetable['remind']}"
 
         if isinstance(timetable["replacement_id"], int):
             lesson: TableDicts.LessonDict = self.queries.get_lesson(timetable["replacement_id"])
@@ -34,7 +35,7 @@ class Timetable:
             flasher = None
         else:
             lesson: TableDicts.LessonDict = self.queries.get_lesson(timetable["lesson_id"])
-            flasher: TableDicts.LessonDict | None = self.queries.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
+            flasher: TableDicts.LessonDict|None = self.queries.get_lesson(timetable["flasher_id"]) if timetable["flasher_id"] is not None else None
 
         if date is not None or isinstance(timetable["replacement_id"], int) or flasher is None:
 
@@ -52,7 +53,7 @@ class Timetable:
                 {
                     "name": f"<b><i>{lesson['name']}</i></b>",
                     "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
-                    "remind": timetable["remind"]
+                    "remind": remind
                 }
             )
 
@@ -62,7 +63,55 @@ class Timetable:
                 "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
                 "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
                          f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
-                "remind": timetable["remind"]
+                "remind": remind
+            }
+        )
+
+
+    def find_lesson(self, date_time: datetime) -> TimetableDicts.FoundLessonDict:
+        date_time = date_time.replace(tzinfo=None)
+        rings: list[TableDicts.RingDict] = self.queries.get_rings()
+        if not self.queries.get_weekdays()[date_time.weekday()]["is_work_day"]:
+            return cast(
+                TimetableDicts.FoundLessonDict,
+                {
+                    "lesson": "Сьогодні вихідний! Відпочиньте (p≧w≦q)", 
+                    "ring": None
+                }
+            )
+        if datetime.combine(date_time, (rings[0]["start"] - timedelta(minutes=5)).time()) > date_time:
+            return cast(
+                TimetableDicts.FoundLessonDict,
+                {
+                    "lesson": "Ще дуже рано! Відпочиньте ( *︾▽︾)", 
+                    "ring": None
+                }
+            )
+        if datetime.combine(date_time, rings[-1]["end"].time()) < date_time:
+            return cast(
+                TimetableDicts.FoundLessonDict,
+                {
+                    "lesson": "Заняття вже закінчились! Відпочиньте o(*^▽^*)┛", 
+                    "ring": None
+                }
+            )
+        for ring in rings:
+            if (datetime.combine(date_time, (ring["start"] - timedelta(minutes=5)).time()) < date_time
+            and date_time < datetime.combine(date_time, ring["end"].time())):
+                break
+        else:
+            return cast(
+                TimetableDicts.FoundLessonDict,
+                {
+                    "lesson": "Зараз перерва, відпочиньте! ლ(╹◡╹ლ)", 
+                    "ring": None
+                }
+            )
+        return cast(
+            TimetableDicts.FoundLessonDict,
+            {
+                "lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time),
+                "ring": ring
             }
         )
 
