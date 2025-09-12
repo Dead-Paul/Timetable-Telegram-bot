@@ -2,5 +2,5 @@
 /.vs
 *.pyproj
 *.sln
-/*/__pycache__
+__pycache__/
 *.log
