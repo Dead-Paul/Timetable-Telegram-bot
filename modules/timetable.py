@@ -73,16 +73,16 @@ class Timetable:
         date_time = date_time.replace(tzinfo=None)
         rings: list[TableDicts.RingDict] = self.get_rings(date_time.date())
         if not self.queries.get_weekdays()[date_time.weekday()]["is_work_day"]:
-            return {"lesson": "Сьогодні вихідний! Відпочиньте (p≧w≦q)", "ring": None}
+            return {"lesson": "Сьогодні вихідний! Відпочиньте\n(p≧w≦q)", "ring": None}
         if (rings[0]["start"] - timedelta(minutes=5)) > date_time:
-            return {"lesson": "Ще дуже рано! Відпочиньте ( *︾▽︾)", "ring": None}
+            return {"lesson": "Ще дуже рано! Відпочиньте\n( *︾▽︾)", "ring": None}
         if rings[-1]["end"] < date_time:
-            return {"lesson": "Заняття вже закінчились! Відпочиньте o(*^▽^*)┛", "ring": None}
+            return {"lesson": "Заняття вже закінчились! Відпочиньте\no(*^▽^*)┛", "ring": None}
         for ring in rings:
             if (ring["start"] - timedelta(minutes=5)) < date_time < ring["end"]:
                 break
         else:
-            return {"lesson": "Зараз перерва, відпочиньте! ლ(╹◡╹ლ)", "ring": None}
+            return {"lesson": "Зараз перерва, відпочиньте!\nლ(╹◡╹ლ)", "ring": None}
         return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time), "ring": ring}
 
 
