@@ -35,6 +35,7 @@ class TimetableDicts:
         name: str
         link: str
         remind: str|None
+        lesson_id: int
 
     class FoundLessonDict(TypedDict):
         lesson: "TimetableDicts.LessonDict|str|NoneType"

@@ -49,14 +49,16 @@ class Timetable:
             return  {
                 "name": f"<b><i>{lesson['name']}</i></b>",
                 "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
-                "remind": remind
+                "remind": remind,
+                "lesson_id": lesson["id"]
             }
 
         return {
             "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
             "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
                         f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
-            "remind": remind
+            "remind": remind,
+            "lesson_id": lesson["id"]
         }
 
     def get_rings(self, target_date: date) -> list[TableDicts.RingDict]:
