@@ -180,18 +180,15 @@ def tomorrow_msg(message: Message):
 
 @bot.message_handler(commands=["current_lesson"])
 def current_lesson_msg(message: Message):
-    current_lesson: TimetableDicts.FoundLessonDict = timetable.find_lesson(get_datetime())
-    if current_lesson["lesson"] is None:
-        bot.reply_to(message, "Скоріш за все, зараз немає заняття, хоч за розкладом дзвінков воно і має бути \n┗( T﹏T )┛")
-    assert current_lesson["lesson"] is not None
-    if current_lesson["ring"] is None:
-        assert isinstance(current_lesson["lesson"], str)
-        bot.reply_to(message, current_lesson["lesson"])
+    current_lesson: TimetableDicts.FoundLessonDict|str = timetable.find_lesson(get_datetime())
+
+    if isinstance(current_lesson, str):
+        bot.reply_to(message, current_lesson)
         bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
     else:
-        assert isinstance(current_lesson["ring"], dict)
-        assert isinstance(current_lesson["lesson"], dict)
-        if current_lesson["lesson"]["lesson_id"] == 1:
+        if current_lesson["lesson"] is None:
+            bot.reply_to(message, "Скоріш за все, зараз немає заняття, хоч за розкладом дзвінков воно і має бути \n┗( T﹏T )┛")
+        elif current_lesson["lesson"]["lesson_id"] == 1:
             bot.reply_to(message, "Зараз немає заняття, можна відпочити!\n(☆▽☆)") 
             bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
         else:

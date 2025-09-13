@@ -38,5 +38,5 @@ class TimetableDicts:
         lesson_id: int
 
     class FoundLessonDict(TypedDict):
-        lesson: "TimetableDicts.LessonDict|str|NoneType"
-        ring: TableDicts.RingDict|None
+        lesson: "TimetableDicts.LessonDict|NoneType"
+        ring: TableDicts.RingDict

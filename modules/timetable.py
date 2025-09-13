@@ -69,20 +69,20 @@ class Timetable:
         return rings
 
 
-    def find_lesson(self, date_time: datetime) -> TimetableDicts.FoundLessonDict:
+    def find_lesson(self, date_time: datetime) -> TimetableDicts.FoundLessonDict|str:
         date_time = date_time.replace(tzinfo=None)
         rings: list[TableDicts.RingDict] = self.get_rings(date_time.date())
         if not self.queries.get_weekdays()[date_time.weekday()]["is_work_day"]:
-            return {"lesson": "Сьогодні вихідний! Відпочиньте\n(p≧w≦q)", "ring": None}
+            return "Сьогодні вихідний! Відпочиньте\n(p≧w≦q)"
         if (rings[0]["start"] - timedelta(minutes=5)) > date_time:
-            return {"lesson": "Ще дуже рано! Відпочиньте\n( *︾▽︾)", "ring": None}
+            return "Ще дуже рано! Відпочиньте\n( *︾▽︾)"
         if rings[-1]["end"] < date_time:
-            return {"lesson": "Заняття вже закінчились! Відпочиньте\no(*^▽^*)┛", "ring": None}
+            return "Заняття вже закінчились! Відпочиньте\no(*^▽^*)┛"
         for ring in rings:
             if (ring["start"] - timedelta(minutes=5)) < date_time < ring["end"]:
                 break
         else:
-            return {"lesson": "Зараз перерва, відпочиньте!\nლ(╹◡╹ლ)", "ring": None}
+            return "Зараз перерва, відпочиньте!\nლ(╹◡╹ლ)"
         return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time), "ring": ring}
 
     def find_next_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None) -> TimetableDicts.FoundLessonDict|None:
