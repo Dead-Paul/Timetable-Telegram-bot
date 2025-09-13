@@ -3,8 +3,7 @@ import sys
 import time
 import logging
 from threading import Thread
-from zoneinfo import ZoneInfo
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
