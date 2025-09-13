@@ -83,7 +83,7 @@ class Timetable:
                 break
         else:
             return "Зараз перерва, відпочиньте!\nლ(╹◡╹ლ)"
-        return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time), "ring": ring}
+        return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time.date()), "ring": ring}
 
     def find_next_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None) -> TimetableDicts.FoundLessonDict|None:
         rings: list[TableDicts.RingDict] = self.queries.get_rings() if target_date is None else self.get_rings(target_date)
