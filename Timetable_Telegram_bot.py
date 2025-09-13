@@ -1,15 +1,19 @@
 ﻿import os
 import sys
+import time
 import logging
+from threading import Thread
 from zoneinfo import ZoneInfo
 from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
+from telebot.apihelper import ApiException
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-from modules.json_file import JSON_File
+from utils import Utils
 from modules.my_sql import MySQL
+from modules.json_file import JSON_File
 from modules.sql_queries import Queries, TableDicts
 from modules.timetable import Timetable, TimetableDicts
 
@@ -63,6 +67,9 @@ queries = Queries(my_sql.cursor, logger, json_file)
 
 timetable = Timetable(queries, logger, json_file)
 
+utils = Utils(queries, timetable)
+
+
 def get_datetime() -> datetime:
     bot_timezone = json_file.get("timezone")
     if not isinstance(bot_timezone, str):
@@ -70,6 +77,35 @@ def get_datetime() -> datetime:
         return datetime.now()
     return datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo(bot_timezone))
 logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' ', timespec='seconds')}")
+
+
+def distribute(text: str, sticker_type: list[str]) -> None:
+    subscribed_users: list[TableDicts.UserDict] = queries.get_subscribed_users()
+    if len(subscribed_users) < 1:
+        logger.warning("Ні у кого з користувачів вімкнена розсилка!")
+        return
+    logger.info(f"Розсилка вімкнута у {len(subscribed_users)} користувачів.")
+    sticker_id: str = queries.get_sticker_id(sticker_type)
+    for user in subscribed_users:
+        try:
+            bot.send_message(user["id"], text)
+            bot.send_sticker(user["id"], sticker_id)
+        except ApiException:
+            logger.warning(f"Знайден чат, в який не вдається відправити інформацію, він буде відписан. ID = {user['id']}!")
+            queries.set_subscription(user["id"], False)
+    return
+
+
+def distribution_cycle() -> None:
+    while True:
+        distribution_timedelta: timedelta = utils.distribution(get_datetime(), distribute)
+        logger.info(f"Розсилка була призупинена. Наступна перевірка буде: " + 
+                    (get_datetime() + distribution_timedelta).isoformat(sep=' ', timespec="seconds"))
+        time.sleep(distribution_timedelta.total_seconds())
+
+distribution_thread = Thread(target=distribution_cycle, daemon=True)
+distribution_thread.start()
+logging.info("Розсилка працює.")
 
 
 
@@ -194,7 +230,7 @@ def current_lesson_msg(message: Message):
         else:
             bot.reply_to(message, 
                 f"<b>З {current_lesson['ring']['start'].strftime('%H:%M')} по {current_lesson['ring']['end'].strftime('%H:%M')}:</b> "
-                f"{current_lesson['lesson']['name']}{current_lesson['lesson']['link']}" + (current_lesson['lesson']['remind'] or "")
+                f"{current_lesson['lesson']['name']}{current_lesson['lesson']['link']}" + (current_lesson["lesson"]["remind"] or "")
             ) 
             bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
