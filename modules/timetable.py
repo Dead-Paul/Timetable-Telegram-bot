@@ -85,6 +85,16 @@ class Timetable:
             return {"lesson": "Зараз перерва, відпочиньте!\nლ(╹◡╹ლ)", "ring": None}
         return {"lesson": self.get_lesson(date_time.isoweekday(), ring["id"], date_time), "ring": ring}
 
+    def find_next_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None) -> TimetableDicts.FoundLessonDict|None:
+        rings: list[TableDicts.RingDict] = self.queries.get_rings() if target_date is None else self.get_rings(target_date)
+        for ring_id in range(lesson_number, len(rings) + 1):
+            next_lesson: TimetableDicts.LessonDict|None = self.get_lesson(isoweekday, ring_id, target_date)
+            if next_lesson is not None and next_lesson["lesson_id"] != 1:
+                break
+        else:
+            return None
+        return {"lesson": next_lesson, "ring": rings[ring_id]}
+        
 
     @overload
     def get_timetable(self, target_date: date) -> str:
@@ -105,15 +115,10 @@ class Timetable:
             timetable = list()
             rings_count: int = len(self.queries.get_rings())
             for ring_id in range(1, rings_count + 1):
-                lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday['id'], ring_id, target_date)
+                lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday["id"], ring_id, target_date)
                 if lesson is not None:
-                    if lesson["lesson_id"] == 1:
-                        for next_ring_id in range(ring_id, rings_count + 1):
-                            next_lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday['id'], next_ring_id, target_date)
-                            if next_lesson is not None and next_lesson["lesson_id"] != 1:
-                                break
-                        else:
-                            break
+                    if lesson["lesson_id"] == 1 and self.find_next_lesson(weekday["id"], ring_id, target_date) is None:
+                        break
                     timetable.append(f"{' ' * 4}{ring_id}. {lesson['name']}")
                 else:
                     timetable.append(f"{' ' * 4}{ring_id}. Не знайдено! (≧﹏ ≦)")
