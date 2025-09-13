@@ -87,13 +87,14 @@ class Timetable:
 
     def find_next_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None) -> TimetableDicts.FoundLessonDict|None:
         rings: list[TableDicts.RingDict] = self.queries.get_rings() if target_date is None else self.get_rings(target_date)
-        for ring_id in range(lesson_number, len(rings) + 1):
-            next_lesson: TimetableDicts.LessonDict|None = self.get_lesson(isoweekday, ring_id, target_date)
+        next_lesson: TimetableDicts.LessonDict|None = None
+        for ring_id in range(lesson_number + 1, len(rings) + 1):
+            next_lesson = self.get_lesson(isoweekday, ring_id, target_date)
             if next_lesson is not None and next_lesson["lesson_id"] != 1:
                 break
-        else:
-            return None
-        return {"lesson": next_lesson, "ring": rings[ring_id]}
+            else:
+                next_lesson = None
+        return {"lesson": next_lesson, "ring": rings[ring_id - 1]} if next_lesson is not None else None
         
 
     @overload
