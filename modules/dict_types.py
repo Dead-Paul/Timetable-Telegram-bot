@@ -19,7 +19,9 @@ class TableDicts:
         name: str
         is_work_day: bool
 
-    LessonDict = TypedDict("LessonDict", {"id": int, "name": str, "link": str, "class": str, "max_grade": int})
+    class UserDict(TypedDict):
+        id: int
+        is_subscriber: bool
 
     class TimetableDict(TypedDict):
         id: int
@@ -29,6 +31,8 @@ class TableDicts:
         flasher_id: int|None
         replacement_id: int|None
         remind: str|None
+
+    LessonDict = TypedDict("LessonDict", {"id": int, "name": str, "link": str, "class": str, "max_grade": int})
 
 class TimetableDicts:
     class LessonDict(TypedDict):
