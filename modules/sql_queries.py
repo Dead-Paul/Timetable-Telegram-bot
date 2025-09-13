@@ -60,3 +60,7 @@ class Queries:
     def clean_replacement_and_remind(self, weekday_id: int, ring_id: int) -> None:
         self.cursor.execute("UPDATE `timetable` SET remind = NULL, replacement_id = NULL WHERE weekday_id = %s and ring_id = %s", [weekday_id, ring_id])
         return
+
+    def get_subscribed_users(self) -> list[TableDicts.UserDict]:
+        self.cursor.execute("SELECT * FROM `user` WHERE is_subscriber = 1")
+        return cast(list[TableDicts.UserDict], self.cursor.fetchall())
