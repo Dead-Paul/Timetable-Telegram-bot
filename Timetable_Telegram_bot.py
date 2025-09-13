@@ -1,14 +1,19 @@
 ﻿import os
 import sys
+import time
 import logging
-from datetime import datetime, timedelta
+from threading import Thread
+from zoneinfo import ZoneInfo
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
+from telebot.apihelper import ApiException
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-from modules.json_file import JSON_File
+from utils import Utils
 from modules.my_sql import MySQL
+from modules.json_file import JSON_File
 from modules.sql_queries import Queries, TableDicts
 from modules.timetable import Timetable, TimetableDicts
 from utils import Utils
@@ -63,10 +68,39 @@ queries = Queries(my_sql.cursor, logger, json_file)
 
 timetable = Timetable(queries, logger, json_file)
 
-utils = Utils(json_file, logger)
+utils = Utils(queries, timetable, json_file, logger)
 
 get_datetime = utils.get_datetime
 logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' ', timespec='seconds')}")
+
+def distribute(text: str, sticker_type: list[str]) -> None:
+    subscribed_users: list[TableDicts.UserDict] = queries.get_subscribed_users()
+    if len(subscribed_users) < 1:
+        logger.warning("Ні у кого з користувачів вімкнена розсилка!")
+        return
+    logger.info(f"Розсилка вімкнута у {len(subscribed_users)} користувачів.")
+    sticker_id: str = queries.get_sticker_id(sticker_type)
+    for user in subscribed_users:
+        try:
+            bot.send_message(user["id"], text)
+            bot.send_sticker(user["id"], sticker_id)
+        except ApiException:
+            logger.warning(f"Знайден чат, в який не вдається відправити інформацію, він буде відписан. ID = {user['id']}!")
+            queries.set_subscription(user["id"], False)
+    return
+
+
+def distribution_cycle() -> None:
+    while True:
+        distribution_timedelta: timedelta = utils.distribution(get_datetime(), distribute)
+        logger.info(f"Розсилка була призупинена. Наступна перевірка буде: " + 
+                    (get_datetime() + distribution_timedelta).isoformat(sep=' ', timespec="seconds"))
+        time.sleep(distribution_timedelta.total_seconds())
+
+distribution_thread = Thread(target=distribution_cycle, daemon=True)
+distribution_thread.start()
+logging.info("Розсилка працює.")
+
 
 
 
@@ -85,7 +119,7 @@ def subscribtion_act(message: Message):
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("Робити", "Не робити")
     bot.register_next_step_handler(
-        bot.reply_to(message,"<b>Мені робити розсилку в цей чат?</b> \n(☆▽☆)", reply_markup=markup, disable_notification=True),
+        bot.reply_to(message,"<b>Мені робити розсилку в цей чат?</b>\n(☆▽☆)", reply_markup=markup, disable_notification=True),
         set_subscribtion
     )
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["service", "study"]), disable_notification=True)
@@ -93,7 +127,7 @@ def subscribtion_act(message: Message):
 @bot.message_handler(commands=["start"], chat_types=["private"])
 def private_start_msg(message: Message):
     assert message.from_user is not None
-    bot.reply_to(message, f"<b><i>Вітаю, {message.from_user.first_name}!</i></b> \n(p≧w≦q)")
+    bot.reply_to(message, f"<b><i>Вітаю, {message.from_user.first_name}!</i></b>\n(p≧w≦q)")
 
     if queries.is_new_user(message.from_user.id):
         bot.send_message(message.chat.id, 
@@ -109,8 +143,8 @@ def private_start_msg(message: Message):
     subscribtion_act(message)
         
 @bot.message_handler(commands=["start"], chat_types=["group", "supergroup"])
-def group_start_msg(message : Message):
-    bot.reply_to(message, f"<b><i>Вітаю, {bot.get_chat(message.chat.id).title}!</i></b> \n(p≧w≦q)")
+def group_start_msg(message: Message):
+    bot.reply_to(message, f"<b><i>Вітаю, {bot.get_chat(message.chat.id).title}!</i></b>\n(p≧w≦q)")
 
     if queries.is_new_user(message.chat.id):
         bot.send_message(message.chat.id, 
@@ -127,7 +161,7 @@ def group_start_msg(message : Message):
 
 
 @bot.message_handler(commands=["rings"])
-def rings_msg(message : Message):
+def rings_msg(message: Message):
     rings = queries.get_rings()
     
     bot.reply_to(message, 
@@ -155,15 +189,15 @@ def timetable_msg(message: Message):
 
 @bot.message_handler(commands=["today"])
 def today_msg(message: Message):
-    bot.reply_to(message, timetable.get_timetable(get_datetime()), disable_notification=True)
+    bot.reply_to(message, timetable.get_timetable(get_datetime().date()), disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 @bot.message_handler(commands=["tomorrow"])
 def tomorrow_msg(message: Message):
-    today: datetime = get_datetime()
+    today: date = get_datetime().date()
     next_work_day: TableDicts.WeekdayDict|None = timetable.get_next_workday(today.weekday())
     if next_work_day is not None:
-        if (today.date() + timedelta(days=1)).isoweekday() != next_work_day['id']:
+        if (today + timedelta(days=1)).isoweekday() != next_work_day['id']:
             bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
         bot.reply_to(message,
             timetable.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
@@ -176,22 +210,23 @@ def tomorrow_msg(message: Message):
 
 @bot.message_handler(commands=["current_lesson"])
 def current_lesson_msg(message: Message):
-    current_lesson: TimetableDicts.FoundLessonDict = timetable.find_lesson(get_datetime())
-    if current_lesson["lesson"] is None:
-        bot.reply_to(message, "Скоріш за все, зараз немає заняття, хоч за розкладом дзвінков воно і має бути ┗( T﹏T )┛")
-    assert current_lesson["lesson"] is not None
-    if current_lesson["ring"] is None:
-        assert isinstance(current_lesson["lesson"], str)
-        bot.reply_to(message, current_lesson["lesson"])
+    current_lesson: TimetableDicts.FoundLessonDict|str = timetable.find_lesson(get_datetime())
+
+    if isinstance(current_lesson, str):
+        bot.reply_to(message, current_lesson)
         bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
     else:
-        assert isinstance(current_lesson["ring"], dict)
-        assert isinstance(current_lesson["lesson"], dict)
-        bot.reply_to(message, 
-            f"<b>З {current_lesson['ring']['start'].strftime('%H:%M')} по {current_lesson['ring']['end'].strftime('%H:%M')}:</b> "
-            f"{current_lesson['lesson']['name']}{current_lesson['lesson']['link']}" + (current_lesson['lesson']['remind'] or "")
-        ) 
-        bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
+        if current_lesson["lesson"] is None:
+            bot.reply_to(message, "Скоріш за все, зараз немає заняття, хоч за розкладом дзвінков воно і має бути \n┗( T﹏T )┛")
+        elif current_lesson["lesson"]["lesson_id"] == 1:
+            bot.reply_to(message, "Зараз немає заняття, можна відпочити!\n(☆▽☆)") 
+            bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
+        else:
+            bot.reply_to(message, 
+                f"<b>З {current_lesson['ring']['start'].strftime('%H:%M')} по {current_lesson['ring']['end'].strftime('%H:%M')}:</b> "
+                f"{current_lesson['lesson']['name']}{current_lesson['lesson']['link']}" + (current_lesson["lesson"]["remind"] or "")
+            ) 
+            bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
 
 bot.infinity_polling()

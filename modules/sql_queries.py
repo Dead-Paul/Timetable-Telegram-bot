@@ -47,7 +47,7 @@ class Queries:
 
     def get_lesson(self, lesson_id: int) -> TableDicts.LessonDict:
         self.cursor.execute("SELECT * FROM `lesson` WHERE id = %s", [lesson_id])
-        lesson: TableDicts.LessonDict | None = cast(TableDicts.LessonDict, self.cursor.fetchone())
+        lesson: TableDicts.LessonDict|None = cast(TableDicts.LessonDict, self.cursor.fetchone())
         if lesson is None:
             self.logger.error(f"Заняття з айді {lesson_id} не було знайдено в базі даних!")
             raise ValueError
@@ -56,3 +56,11 @@ class Queries:
     def get_timetable_row(self, weekday_id: int, ring_id: int) -> TableDicts.TimetableDict|None:
         self.cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [weekday_id, ring_id])
         return cast(TableDicts.TimetableDict, self.cursor.fetchone())
+
+    def clean_replacement_and_remind(self, weekday_id: int, ring_id: int) -> None:
+        self.cursor.execute("UPDATE `timetable` SET remind = NULL, replacement_id = NULL WHERE weekday_id = %s and ring_id = %s", [weekday_id, ring_id])
+        return
+
+    def get_subscribed_users(self) -> list[TableDicts.UserDict]:
+        self.cursor.execute("SELECT * FROM `user` WHERE is_subscriber = 1")
+        return cast(list[TableDicts.UserDict], self.cursor.fetchall())
