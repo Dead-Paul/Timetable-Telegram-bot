@@ -154,6 +154,8 @@ def group_start_msg(message: Message):
             "Усе це я обов’язково надішлю </i><u>за три хвилини до початку заняття!</u><i>\n"
             "А після завершення одного заняття я надсилатиму назву наступного та час його проведення.</i></b>"
         )
+    if utils.is_main_group(bot.get_chat(message.chat.id).title, message.chat.id):
+        bot.send_message(message.chat.id, "Ви моя основна група! Усі адміни цієї групи одразу є моїми адмінами (´▽`ʃ♡ƪ)")
 
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "happy"]), disable_notification=True)
     subscribtion_act(message)
@@ -162,7 +164,6 @@ def group_start_msg(message: Message):
 @bot.message_handler(commands=["rings"])
 def rings_msg(message: Message):
     rings = queries.get_rings()
-    
     bot.reply_to(message, 
         ";\n".join(
             [
@@ -210,7 +211,6 @@ def tomorrow_msg(message: Message):
 @bot.message_handler(commands=["current_lesson"])
 def current_lesson_msg(message: Message):
     current_lesson: TimetableDicts.FoundLessonDict|str = timetable.find_lesson(get_datetime())
-
     if isinstance(current_lesson, str):
         bot.reply_to(message, current_lesson)
         bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "lovely", "service"]), disable_notification=True)
