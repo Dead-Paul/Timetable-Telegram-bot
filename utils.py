@@ -1,6 +1,6 @@
 from logging import Logger
 from zoneinfo import ZoneInfo
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from datetime import datetime, timedelta
 
 from modules.json_file import JSON_File
@@ -21,6 +21,20 @@ class Utils:
             self.logger.info(f"В файлі JSON не знайдено значення ключа timezone.")
             return datetime.now()
         return datetime.now().astimezone(ZoneInfo(bot_timezone))
+
+    def is_main_group(self, name: str|None, id: int) -> bool:
+        main_group: dict[str, Any]|None = cast(dict, self.json_file.get("main_group"))
+        if main_group is None:
+            self.logger.critical("В файлі JSON не знайдено значення ключа main_group!")
+            raise KeyError
+        elif isinstance(main_group, dict):
+            if (main_group.get("id") is not None) and main_group.get("id") == id:
+                return True
+            elif (main_group.get("name") is not None) and main_group.get("name") == name:
+                main_group["id"] = id
+                self.json_file.set({"main_group": main_group})
+                return True
+        return False
 
     def distribution(self, date_time: datetime, distribute: Callable[[str, list[str]], Any]) -> timedelta:
         rings: list[TableDicts.RingDict] = self.timetable.get_rings(date_time.date())
