@@ -85,7 +85,7 @@ class Utils:
                             next_distribution = next_lesson["ring"]["start"] - timedelta(minutes=3)
                             break
                         next_distribution = rings[0]["start"] + timedelta(days=1) - timedelta(minutes=3)
-                        distribute(f"На сьогодні зайняття закінчились!", ["happy", "lovely"])
+                        distribute(f"На <b>сьогодні</b> зайняття <b>закінчились</b>!\nლ(╹◡╹ლ)", ["happy", "lovely"])
                         break
 
         if isinstance(next_distribution, datetime):
