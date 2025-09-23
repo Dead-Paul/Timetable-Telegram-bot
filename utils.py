@@ -65,7 +65,10 @@ class Utils:
                         if isinstance(lesson, str):
                             next_lesson = self.timetable.find_next_lesson(weekday["id"], ring_i + 1, date_time.date())
                             if next_lesson is not None and next_lesson["lesson"] is not None:
-                                distribute(f"Далі буде {next_lesson['lesson']['name']}\n<i>В {next_lesson['ring']['start']}.</i>", ["study", "sad"])
+                                distribute(
+                                    f"Далі буде {next_lesson['lesson']['name']}\n<i>В {next_lesson['ring']['start'].strftime("%H:%M")}.</i>", 
+                                    ["study", "sad"]
+                                )
                                 next_distribution = next_lesson["ring"]["start"] - timedelta(minutes=3)
                                 break
                             next_distribution = rings[0]["start"] + timedelta(days=1) - timedelta(minutes=3)
@@ -81,7 +84,10 @@ class Utils:
                         self.queries.clean_replacement_and_remind(weekday["id"], ring_i + 1)
                         next_lesson = self.timetable.find_next_lesson(weekday["id"], ring_i + 1, date_time.date())
                         if next_lesson is not None and next_lesson["lesson"] is not None:
-                            distribute(f"Далі буде {next_lesson['lesson']['name']}\n<i>В {next_lesson['ring']['start']}.</i>", ["study", "sad"])
+                            distribute(
+                                f"Далі буде {next_lesson['lesson']['name']}\n<i>В {next_lesson['ring']['start'].strftime("%H:%M")}.</i>", 
+                                ["study", "sad"]
+                            )
                             next_distribution = next_lesson["ring"]["start"] - timedelta(minutes=3)
                             break
                         next_distribution = rings[0]["start"] + timedelta(days=1) - timedelta(minutes=3)
