@@ -2,6 +2,12 @@ from types import NoneType
 from typing import TypedDict
 from datetime import datetime
 
+class MySQLConnectionDict(TypedDict):
+    user: str
+    password: str
+    host: str
+    database: str
+    autocommit: bool
 
 class TableDicts:
     class RingDict(TypedDict):
