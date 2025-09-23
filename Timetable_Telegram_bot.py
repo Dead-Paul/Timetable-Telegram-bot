@@ -15,7 +15,6 @@ from modules.my_sql import MySQL
 from modules.json_file import JSON_File
 from modules.sql_queries import Queries, TableDicts
 from modules.timetable import Timetable, TimetableDicts
-from utils import Utils
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ bot.set_my_commands(
 )
 
 try:
-    my_sql = MySQL("bot", os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
+    my_sql = MySQL(os.environ["DB_USER"], os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
 except KeyError as error:
     logger.critical("Деякі (або всі) параметри для підключення бази даних відсутні, перевірте їх наявність! (перевірте файл .env)")
     sys.exit(1)
@@ -63,7 +62,7 @@ except FileNotFoundError:
     logger.critical("Файл JSON не був знайден!")
     sys.exit(1)
 
-queries = Queries(my_sql.cursor, logger, json_file)
+queries = Queries(my_sql.cursor, logger)
 
 timetable = Timetable(queries, logger, json_file)
 
