@@ -36,6 +36,13 @@ class Utils:
                 return True
         return False
 
+    def get_main_group_id(self) -> int|None:
+        main_group: dict[str, Any]|None = cast(dict, self.json_file.get("main_group"))
+        if main_group is None:
+            self.logger.critical("В файлі JSON не знайдено значення ключа main_group!")
+            raise KeyError
+        return main_group.get("id")
+
     def distribution(self, date_time: datetime, distribute: Callable[[str, list[str]], Any]) -> timedelta:
         rings: list[TableDicts.RingDict] = self.timetable.get_rings(date_time.date())
         weekday: TableDicts.WeekdayDict = self.queries.get_weekdays()[date_time.weekday()]
