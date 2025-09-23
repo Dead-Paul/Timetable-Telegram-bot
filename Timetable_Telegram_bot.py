@@ -45,7 +45,16 @@ bot.set_my_commands(
 )
 
 try:
-    my_sql = MySQL(os.environ["DB_USER"], os.environ["DB_PASSWORD"], os.environ["DB_HOST"], os.environ["DB_NAME"], logger, True)
+    my_sql = MySQL(
+        {
+            "user": os.environ["DB_USER"],
+            "password": os.environ["DB_PASSWORD"],
+            "host": os.environ["DB_HOST"], 
+            "database": os.environ["DB_NAME"], 
+            "autocommit": True
+        },
+       logger
+    )
 except KeyError as error:
     logger.critical("Деякі (або всі) параметри для підключення бази даних відсутні, перевірте їх наявність! (перевірте файл .env)")
     sys.exit(1)
