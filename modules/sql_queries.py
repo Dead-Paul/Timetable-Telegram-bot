@@ -4,14 +4,12 @@ from typing import cast
 
 from mysql.connector.cursor import MySQLCursorDict
 
-from .json_file import JSON_File
 from .dict_types import TableDicts
 
 class Queries:
-    def __init__(self, cursor: MySQLCursorDict, logger: logging.Logger, json_file: JSON_File):
+    def __init__(self, cursor: MySQLCursorDict, logger: logging.Logger):
         self.cursor = cursor
         self.logger = logger
-        self.json_file = json_file
 
     def is_new_user(self, user_id: int) -> bool:
         self.cursor.execute("SELECT 1 FROM `user` WHERE id = %s", [user_id])
