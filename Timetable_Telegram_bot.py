@@ -7,9 +7,9 @@ from datetime import date, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
-from telebot.apihelper import ApiException
 from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+from bot_utils import BotUtils
 from utils import Utils
 from modules.my_sql import MySQL
 from modules.json_file import JSON_File
@@ -77,29 +77,15 @@ timetable = Timetable(queries, logger, json_file)
 
 utils = Utils(queries, timetable, json_file, logger)
 
+bot_utils = BotUtils(bot, queries, utils, logger)
+
 get_datetime = utils.get_datetime
 logger.info(f"Час для бота зараз {get_datetime().isoformat(sep=' ', timespec='seconds')}")
-
-def distribute(text: str, sticker_type: list[str]) -> None:
-    subscribed_users: list[TableDicts.UserDict] = queries.get_subscribed_users()
-    if len(subscribed_users) < 1:
-        logger.warning("Ні у кого з користувачів вімкнена розсилка!")
-        return
-    logger.info(f"Розсилка вімкнута у {len(subscribed_users)} користувачів.")
-    sticker_id: str = queries.get_sticker_id(sticker_type)
-    for user in subscribed_users:
-        try:
-            bot.send_message(user["id"], text)
-            bot.send_sticker(user["id"], sticker_id)
-        except ApiException:
-            logger.warning(f"Знайден чат, в який не вдається відправити інформацію, він буде відписан. ID = {user['id']}!")
-            queries.set_subscription(user["id"], False)
-    return
 
 
 def distribution_cycle() -> None:
     while True:
-        distribution_timedelta: timedelta = utils.distribution(get_datetime(), distribute)
+        distribution_timedelta: timedelta = utils.distribution(get_datetime(), bot_utils.distribute)
         logger.info(f"Розсилка була призупинена. Наступна перевірка буде: " + 
                     (get_datetime() + distribution_timedelta).isoformat(sep=' ', timespec="seconds"))
         time.sleep(distribution_timedelta.total_seconds())
@@ -107,7 +93,6 @@ def distribution_cycle() -> None:
 distribution_thread = Thread(target=distribution_cycle, daemon=True)
 distribution_thread.start()
 logging.info("Розсилка працює.")
-
 
 
 
