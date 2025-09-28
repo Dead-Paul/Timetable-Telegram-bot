@@ -48,15 +48,18 @@ class Timetable:
                     lesson = flasher            
             return  {
                 "name": f"<b><i>{lesson['name']}</i></b>",
-                "link": f"\n\n<b>Посилання на заняття:</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}",
+                "link": (f"\n\n<b>Посилання на заняття:</b>\n{lesson['link'] or 'Немає посилання'}"
+                         f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"),
                 "remind": remind,
                 "lesson_id": lesson["id"]
             }
 
         return {
             "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
-            "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link']}\n\n<b>Посилання на клас:</b>\n{lesson['class']}"
-                        f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link']} \n\n<b>Посилання на клас:</b> \n{flasher['class']}"),
+            "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link'] or 'Немає посилання'}"
+                     f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"
+                     f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link'] or 'Немає посилання'}"
+                     f"\n\n<b>Посилання на клас:</b> \n{flasher['class'] or 'Немає посилання'}"),
             "remind": remind,
             "lesson_id": lesson["id"]
         }
