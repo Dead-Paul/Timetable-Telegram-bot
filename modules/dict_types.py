@@ -38,7 +38,7 @@ class TableDicts:
         replacement_id: int|None
         remind: str|None
 
-    LessonDict = TypedDict("LessonDict", {"id": int, "name": str, "link": str, "class": str, "max_grade": int})
+    LessonDict = TypedDict("LessonDict", {"id": int, "name": str, "link": str|None, "class": str|None, "max_grade": int|None})
 
 class TimetableDicts:
     class LessonDict(TypedDict):
