@@ -1,6 +1,6 @@
 from logging import Logger
 from zoneinfo import ZoneInfo
-from typing import Any, Callable, cast
+from typing import Any, Callable, Mapping, TypeVar, cast
 from datetime import datetime, timedelta
 
 from modules.json_file import JSON_File
@@ -23,7 +23,7 @@ class Utils:
         return datetime.now().astimezone(ZoneInfo(bot_timezone))
 
     def is_main_group(self, name: str|None, id: int) -> bool:
-        main_group: dict[str, Any]|None = cast(dict, self.json_file.get("main_group"))
+        main_group: dict[str, Any]|None = cast(dict|None, self.json_file.get("main_group"))
         if main_group is None:
             self.logger.critical("В файлі JSON не знайдено значення ключа main_group!")
             raise KeyError
@@ -37,11 +37,16 @@ class Utils:
         return False
 
     def get_main_group_id(self) -> int|None:
-        main_group: dict[str, Any]|None = cast(dict, self.json_file.get("main_group"))
+        main_group: dict[str, Any]|None = cast(dict|None, self.json_file.get("main_group"))
         if main_group is None:
             self.logger.critical("В файлі JSON не знайдено значення ключа main_group!")
             raise KeyError
         return main_group.get("id")
+
+    __dictType = TypeVar("__dictType", bound=Mapping[str, Any])
+    def find_dict(self, value: Any, list_of_dicts: list[__dictType], key: str) -> __dictType|None:
+        return next((dictionary for dictionary in list_of_dicts if dictionary[key] == value), None)
+
 
     def distribution(self, date_time: datetime, distribute: Callable[[str, list[str]], Any]) -> timedelta:
         rings: list[TableDicts.RingDict] = self.timetable.get_rings(date_time.date())
