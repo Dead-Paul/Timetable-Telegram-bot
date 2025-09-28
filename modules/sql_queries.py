@@ -73,8 +73,20 @@ class Queries:
     def update_timetable(self, weekday_id: int, ring_id: int, column_name: str, value: str|int|None) -> None:
         self._cursor().execute(f"UPDATE `timetable` SET {column_name} = %s WHERE weekday_id = %s and ring_id = %s", [value, weekday_id, ring_id])
 
+    def update_lesson(self, lesson_id: int, column_name: str, value: str|int|None) -> None:
+        self._cursor().execute(f"UPDATE `lesson` SET {column_name} = %s WHERE id = %s", [value, lesson_id])
+
     def update_weekday(self, weekday_id: int, is_work_day: bool) -> None:
         self._cursor().execute("UPDATE `weekday` SET is_work_day = %s WHERE id = %s", [is_work_day, weekday_id])
+
+    def create_lesson(self, lesson: TableDicts.LessonDict) -> int|None:
+        cursor: MySQLCursorDict = self._cursor()
+        cursor.execute("INSERT INTO `lesson` (name, link, class, max_grade) VALUES (%s, %s, %s, %s)",
+                               [lesson["name"], lesson["link"], lesson["class"], lesson["max_grade"]])
+        return cursor.lastrowid
+
+    def delete_lesson(self, lesson_id: int) -> None:
+        self._cursor().execute("DELETE FROM `lesson` WHERE id = %s", [lesson_id])
 
     def get_subscribed_users(self) -> list[TableDicts.UserDict]:
         cursor: MySQLCursorDict = self._cursor()
