@@ -39,9 +39,10 @@ bot_commands: list[BotCommand] = [
     BotCommand("tomorrow", "Переглянути розклад на завтра"),
     BotCommand("timetable", "Переглянути розклад занять на тиждень"),
     BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
+    BotCommand("cancel", "Відмінити дію"),
 ]
 bot.set_my_commands(bot_commands, types.BotCommandScopeDefault())
-bot.set_my_commands(bot_commands + [BotCommand("editor", "Відредагувати розклад"), BotCommand("cancel", "Відмінити дію")], types.BotCommandScopeAllPrivateChats())
+bot.set_my_commands(bot_commands + [BotCommand("editor", "Відредагувати розклад")], types.BotCommandScopeAllPrivateChats())
 
 try:
     my_sql = MySQL(
