@@ -39,6 +39,7 @@ bot_commands: list[BotCommand] = [
     BotCommand("tomorrow", "Переглянути розклад на завтра"),
     BotCommand("timetable", "Переглянути розклад занять на тиждень"),
     BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
+    BotCommand("get_lesson", "Отримати посилання на заняття"),
     BotCommand("cancel", "Відмінити дію"),
 ]
 bot.set_my_commands(bot_commands, types.BotCommandScopeDefault())
@@ -95,9 +96,11 @@ distribution_thread.start()
 logging.info("Розсилка працює.")
 
 
+def subscribtion_act(message: Message) -> None:
 
-def subscribtion_act(message: Message):
-    def set_subscribtion(message: Message):
+    @bot_utils.bot_decorators.cancelable
+    @bot_utils.bot_decorators.message_text_required
+    def set_subscribtion(message: Message) -> None:
         match message.text:
             case "Робити":
                 queries.set_subscription(message.chat.id, True)
@@ -108,7 +111,7 @@ def subscribtion_act(message: Message):
             case _:
                 bot.reply_to(message, "Я очікувала від тебе іншого повідомлення, <b><i>розсилка не змінена...</i></b>", reply_markup=ReplyKeyboardRemove())
 
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder="Робити розсилку в чат?", selective=True)
     markup.row("Робити", "Не робити")
     bot.register_next_step_handler(
         bot.reply_to(message,"<b>Мені робити розсилку в цей чат?</b>\n(☆▽☆)", reply_markup=markup, disable_notification=True),
@@ -220,6 +223,29 @@ def current_lesson_msg(message: Message):
             ) 
             bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
+
+@bot_utils.bot_decorators.cancelable
+@bot_utils.bot_decorators.message_text_required
+def get_lesson(message: Message, lessons: list[TableDicts.LessonDict]) -> None:
+    selected_lesson: TableDicts.LessonDict|None = utils.find_dict(message.text, lessons, "name")
+    if selected_lesson is None:
+        bot.reply_to(message, "Такого заняття немає в базі даних!", reply_markup=ReplyKeyboardRemove())
+        return
+    lesson: TimetableDicts.LessonDict = timetable.get_normilized_lesson(lesson=selected_lesson, flasher=None)
+    bot.reply_to(message, f"{lesson['name']}{lesson['link']}", reply_markup=ReplyKeyboardRemove())
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
+
+@bot.message_handler(commands=["get_lesson"])
+def get_lesson_msg(message: Message):
+    markup = ReplyKeyboardMarkup(row_width=1, input_field_placeholder="Оберіть назву заняття...", selective=True)
+    markup.add(bot_utils.cancel_commands[1])
+    lessons: list[TableDicts.LessonDict] = queries.get_lessons()[1:]
+    markup.add(*[lesson["name"] for lesson in lessons])
+    msg: Message = bot.reply_to(message, "Оберіть назву заняття:", reply_markup=markup)
+    if message.chat.type == "private":
+        bot.register_next_step_handler(msg, get_lesson, lessons=lessons)
+    else:
+        bot.register_for_reply_by_message_id(msg.message_id, get_lesson, lessons=lessons)
 
 @bot.message_handler(commands=["cancel"])
 @bot_utils.bot_decorators.cancelable
