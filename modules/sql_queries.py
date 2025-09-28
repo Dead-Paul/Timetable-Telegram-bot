@@ -50,16 +50,21 @@ class Queries:
     def get_lesson(self, lesson_id: int) -> TableDicts.LessonDict:
         cursor: MySQLCursorDict = self._cursor()
         cursor.execute("SELECT * FROM `lesson` WHERE id = %s", [lesson_id])
-        lesson: TableDicts.LessonDict|None = cast(TableDicts.LessonDict, cursor.fetchone())
+        lesson: TableDicts.LessonDict|None = cast(TableDicts.LessonDict|None, cursor.fetchone())
         if lesson is None:
             self.logger.error(f"Заняття з айді {lesson_id} не було знайдено в базі даних!")
             raise ValueError
         return lesson
 
+    def get_lessons(self) -> list[TableDicts.LessonDict]:
+        cursor: MySQLCursorDict = self._cursor()
+        cursor.execute("SELECT * FROM `lesson`")
+        return cast(list[TableDicts.LessonDict], cursor.fetchall())
+
     def get_timetable_row(self, weekday_id: int, ring_id: int) -> TableDicts.TimetableDict|None:
         cursor: MySQLCursorDict = self._cursor()
         cursor.execute("SELECT * FROM `timetable` WHERE weekday_id = %s AND ring_id = %s", [weekday_id, ring_id])
-        return cast(TableDicts.TimetableDict, cursor.fetchone())
+        return cast(TableDicts.TimetableDict|None, cursor.fetchone())
 
     def clean_replacement_and_remind(self, weekday_id: int, ring_id: int) -> None:
         self._cursor().execute("UPDATE `timetable` SET remind = NULL, replacement_id = NULL WHERE weekday_id = %s and ring_id = %s", [weekday_id, ring_id])
