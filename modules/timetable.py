@@ -22,8 +22,27 @@ class Timetable:
                 return weekdays[day_index]
         return None
 
+    def get_normilized_lesson(self, lesson: TableDicts.LessonDict, flasher: TableDicts.LessonDict|None, remind: str|None = None) -> TimetableDicts.LessonDict:
+        if flasher is not None:
+            return {
+                "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
+                "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link'] or 'Немає посилання'}"
+                         f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"
+                         f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link'] or 'Немає посилання'}"
+                         f"\n\n<b>Посилання на клас:</b> \n{flasher['class'] or 'Немає посилання'}"),
+                "remind": remind,
+                "lesson_id": lesson["id"]
+            }
+        return  {
+            "name": f"<b><i>{lesson['name']}</i></b>",
+            "link": (f"\n\n<b>Посилання на заняття:</b>\n{lesson['link'] or 'Немає посилання'}"
+                        f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"),
+            "remind": remind,
+            "lesson_id": lesson["id"]
+        }
+
     def get_lesson(self, isoweekday: int, lesson_number: int, target_date: date|None = None) -> TimetableDicts.LessonDict|None:
-        timetable: TableDicts.TimetableDict|None = cast(TableDicts.TimetableDict, self.queries.get_timetable_row(isoweekday, lesson_number))
+        timetable: TableDicts.TimetableDict|None = cast(TableDicts.TimetableDict|None, self.queries.get_timetable_row(isoweekday, lesson_number))
         if timetable is None:
             return None
 
@@ -46,23 +65,8 @@ class Timetable:
                     raise 
                 if ((target_date - timedelta(days=target_date.weekday()) - first_flasher_monday).days // 7) % 2:
                     lesson = flasher            
-            return  {
-                "name": f"<b><i>{lesson['name']}</i></b>",
-                "link": (f"\n\n<b>Посилання на заняття:</b>\n{lesson['link'] or 'Немає посилання'}"
-                         f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"),
-                "remind": remind,
-                "lesson_id": lesson["id"]
-            }
-
-        return {
-            "name": f"<b><i>{lesson['name']} / {flasher['name']}</i></b>",
-            "link": (f"\n\n<b>Посилання на заняття ({lesson['name']}):</b>\n{lesson['link'] or 'Немає посилання'}"
-                     f"\n\n<b>Посилання на клас:</b>\n{lesson['class'] or 'Немає посилання'}"
-                     f"\n\n\n<b>Посилання на заняття ({flasher['name']}):</b>\n{flasher['link'] or 'Немає посилання'}"
-                     f"\n\n<b>Посилання на клас:</b> \n{flasher['class'] or 'Немає посилання'}"),
-            "remind": remind,
-            "lesson_id": lesson["id"]
-        }
+            return self.get_normilized_lesson(lesson, None, remind)
+        return self.get_normilized_lesson(lesson, flasher, remind)
 
     def get_rings(self, target_date: date) -> list[TableDicts.RingDict]:
         rings: list[TableDicts.RingDict] = self.queries.get_rings()
