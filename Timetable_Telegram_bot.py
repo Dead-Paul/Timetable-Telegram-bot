@@ -7,7 +7,7 @@ from datetime import date, timedelta
 
 from dotenv import load_dotenv
 from telebot import TeleBot, types
-from telebot.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telebot.types import BotCommand, CallbackQuery, Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot_utils import BotUtils
 from utils import Utils
@@ -32,17 +32,16 @@ except ValueError:
     sys.exit(1)
 logger.info("Бот почав роботу!")
 
-bot.set_my_commands(
-    [
-        types.BotCommand("start", "Перезапустити бота"),
-        types.BotCommand("rings", "Переглянути розклад дзвінків"),
-        types.BotCommand("today", "Переглянути розклад на сьогодні"),
-        types.BotCommand("tomorrow", "Переглянути розклад на завтра"),
-        types.BotCommand("timetable", "Переглянути розклад занять на тиждень"),
-        types.BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
-    ],
-    types.BotCommandScopeDefault()
-)
+bot_commands: list[BotCommand] = [
+    BotCommand("start", "Перезапустити бота"),
+    BotCommand("rings", "Переглянути розклад дзвінків"),
+    BotCommand("today", "Переглянути розклад на сьогодні"),
+    BotCommand("tomorrow", "Переглянути розклад на завтра"),
+    BotCommand("timetable", "Переглянути розклад занять на тиждень"),
+    BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
+]
+bot.set_my_commands(bot_commands, types.BotCommandScopeDefault())
+bot.set_my_commands(bot_commands + [types.BotCommand("editor", "Відредагувати розклад")], types.BotCommandScopeAllPrivateChats())
 
 try:
     my_sql = MySQL(
@@ -220,5 +219,64 @@ def current_lesson_msg(message: Message):
             ) 
             bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
+
+@bot.message_handler(commands=["editor"], chat_types=["private"])
+@bot_utils.bot_decorators.access_required(["administrator", "creator"])
+def editor_msg(message: Message):
+    markup = InlineKeyboardMarkup(row_width=3)
+    markup.row(InlineKeyboardButton("ℹ️ Розклад ⬇️", callback_data="None"))
+    markup.row(
+        InlineKeyboardButton("Основні заняття", callback_data="editor timetable lesson_id"), 
+        InlineKeyboardButton("Мігалки", callback_data="editor timetable flasher_id"), 
+        InlineKeyboardButton("Заміни", callback_data="editor timetable replacement_id")
+    )
+    markup.add(InlineKeyboardButton("Нагадування", callback_data="editor timetable remind"))
+    markup.add(InlineKeyboardButton("Зробити день робочим/вихідним", callback_data="editor timetable weekday"))
+    
+    markup.add(InlineKeyboardButton("ℹ️ Заняття ⬇️", callback_data="None"))
+    markup.add(InlineKeyboardButton("Назву", callback_data="editor lesson name"))
+    markup.row(
+        InlineKeyboardButton("Посилання на заняття", callback_data="editor lesson link"),
+        InlineKeyboardButton("Посилання на клас", callback_data="editor lesson class")
+    )
+    markup.add(InlineKeyboardButton("Максимальний бал", callback_data="editor lesson max_grade"))
+    markup.row(
+        InlineKeyboardButton("Створити нове", callback_data="editor lesson create"),
+        InlineKeyboardButton("Видалити існуюче", callback_data="editor lesson delete")
+    )
+
+    bot.reply_to(message, "Що будемо редагувати?", reply_markup=markup)
+    bot.send_sticker(message.chat.id, queries.get_sticker_id(["lovely", "service", "happy"]))
+
+@bot.callback_query_handler(lambda _: True)
+def callback_handler(callback: CallbackQuery):
+    if callback.data is None: 
+        return
+    if callback.data == "None":
+        bot.answer_callback_query(callback.id, text="Ці кнопки для відображення тексту, вони не виконують ніяких функцій!", show_alert=True)
+        return
+    command, options = callback.data.split(' ', 1)
+    match command:
+        case "editor":
+            request_type, target = options.split(' ', 1)
+            match request_type:
+                case "timetable":
+                    bot_utils.edit_timetable(callback.message, target)
+                    bot.answer_callback_query(callback.id, text="Віддано на обробку!\nОчікуйте повідомлення з інструкціями!", show_alert=False)
+                case "lesson":
+                    bot_utils.edit_lesson(callback.message, target)
+                    bot.answer_callback_query(callback.id, text="Віддано на обробку!\nОчікуйте повідомлення з інструкціями!", show_alert=False)
+                case _:
+                    bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
+                    return
+        case _:
+            bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
+            return
+
+
+@bot.message_handler(["test"])
+def test(message: Message):
+    assert isinstance(message.text, str)
+    bot.reply_to(message, f"access is: {bot_utils.get_user_access(int(message.text.split(' ', 2)[1]))}!")
 
 bot.infinity_polling()
