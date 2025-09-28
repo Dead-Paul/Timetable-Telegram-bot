@@ -70,6 +70,12 @@ class Queries:
         self._cursor().execute("UPDATE `timetable` SET remind = NULL, replacement_id = NULL WHERE weekday_id = %s and ring_id = %s", [weekday_id, ring_id])
         return
 
+    def update_timetable(self, weekday_id: int, ring_id: int, column_name: str, value: str|int|None) -> None:
+        self._cursor().execute(f"UPDATE `timetable` SET {column_name} = %s WHERE weekday_id = %s and ring_id = %s", [value, weekday_id, ring_id])
+
+    def update_weekday(self, weekday_id: int, is_work_day: bool) -> None:
+        self._cursor().execute("UPDATE `weekday` SET is_work_day = %s WHERE id = %s", [is_work_day, weekday_id])
+
     def get_subscribed_users(self) -> list[TableDicts.UserDict]:
         cursor: MySQLCursorDict = self._cursor()
         cursor.execute("SELECT * FROM `user` WHERE is_subscriber = 1")
