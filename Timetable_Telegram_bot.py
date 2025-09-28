@@ -41,7 +41,7 @@ bot_commands: list[BotCommand] = [
     BotCommand("current_lesson", "Знайти зайняття яке проходить зараз"),
 ]
 bot.set_my_commands(bot_commands, types.BotCommandScopeDefault())
-bot.set_my_commands(bot_commands + [types.BotCommand("editor", "Відредагувати розклад")], types.BotCommandScopeAllPrivateChats())
+bot.set_my_commands(bot_commands + [BotCommand("editor", "Відредагувати розклад"), BotCommand("cancel", "Відмінити дію")], types.BotCommandScopeAllPrivateChats())
 
 try:
     my_sql = MySQL(
@@ -219,6 +219,11 @@ def current_lesson_msg(message: Message):
             ) 
             bot.send_sticker(message.chat.id, queries.get_sticker_id(["sad", "study", "service"]), disable_notification=True)
 
+
+@bot.message_handler(commands=["cancel"])
+@bot_utils.bot_decorators.cancelable
+def cancel_msg(_: Message):
+    ...
 
 @bot.message_handler(commands=["editor"], chat_types=["private"])
 @bot_utils.bot_decorators.access_required(["administrator", "creator"])
