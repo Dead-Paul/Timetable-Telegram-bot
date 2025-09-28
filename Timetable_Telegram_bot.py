@@ -274,9 +274,4 @@ def callback_handler(callback: CallbackQuery):
             return
 
 
-@bot.message_handler(["test"])
-def test(message: Message):
-    assert isinstance(message.text, str)
-    bot.reply_to(message, f"access is: {bot_utils.get_user_access(int(message.text.split(' ', 2)[1]))}!")
-
 bot.infinity_polling()
