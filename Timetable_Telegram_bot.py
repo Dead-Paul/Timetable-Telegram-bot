@@ -34,6 +34,7 @@ logger.info("Бот почав роботу!")
 
 bot_commands: list[BotCommand] = [
     BotCommand("start", "Перезапустити бота"),
+    BotCommand("subscription", "Керувати підпискою на розсилку"),
     BotCommand("rings", "Переглянути розклад дзвінків"),
     BotCommand("today", "Переглянути розклад на сьогодні"),
     BotCommand("tomorrow", "Переглянути розклад на завтра"),
@@ -43,7 +44,10 @@ bot_commands: list[BotCommand] = [
     BotCommand("cancel", "Відмінити дію"),
 ]
 bot.set_my_commands(bot_commands, types.BotCommandScopeDefault())
-bot.set_my_commands(bot_commands + [BotCommand("editor", "Відредагувати розклад")], types.BotCommandScopeAllPrivateChats())
+bot.set_my_commands(bot_commands + 
+                    [
+                        BotCommand("editor", "Відредагувати розклад")
+                    ], types.BotCommandScopeAllPrivateChats())
 
 try:
     my_sql = MySQL(
@@ -95,66 +99,47 @@ distribution_thread = Thread(target=distribution_cycle, daemon=True)
 distribution_thread.start()
 logging.info("Розсилка працює.")
 
-
-def subscribtion_act(message: Message) -> None:
-
-    @bot_utils.bot_decorators.cancelable
-    @bot_utils.bot_decorators.message_text_required
-    def set_subscribtion(message: Message) -> None:
-        match message.text:
-            case "Робити":
-                queries.set_subscription(message.chat.id, True)
-                bot.reply_to(message, "Добре, <b><i>розсилка увімкнена!</i></b>", reply_markup=ReplyKeyboardRemove())
-            case "Не робити":
-                queries.set_subscription(message.chat.id, False)
-                bot.reply_to(message, "Гаразд, <b><i>розсилка вимкнена...</i></b>", reply_markup=ReplyKeyboardRemove())
-            case _:
-                bot.reply_to(message, "Я очікувала від тебе іншого повідомлення, <b><i>розсилка не змінена...</i></b>", reply_markup=ReplyKeyboardRemove())
-
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, input_field_placeholder="Робити розсилку в чат?", selective=True)
-    markup.row("Робити", "Не робити")
-    bot.register_next_step_handler(
-        bot.reply_to(message,"<b>Мені робити розсилку в цей чат?</b>\n(☆▽☆)", reply_markup=markup, disable_notification=True),
-        set_subscribtion
+@bot.message_handler(commands=["subscription"])
+def subscription_msg(message: Message):
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔔 Підписатися", callback_data="subscription True"), InlineKeyboardButton("🔕 Відписатися", callback_data="subscription False"))
+    bot.reply_to(message,
+        "<b>Підписка на розсилку</b>\n\nЦя команда керує розсилкою сповіщень у цьому чаті.\n\n"
+        "<b><i>Розсилка – це повідомлення про початок та кінець кожного заняття, яке є в розкладі.</i></b>\n\n"
+        "Я надсилатиму тобі:\n• назву заняття;\n• посилання на клас;\n• посилання на саме заняття.\n\n"
+        "Якщо на занятті заплановане щось важливе, адміністратори можуть додати нагадування — і я теж його надішлю.\n\n"
+        "<i>Сповіщення приходять за три хвилини до початку заняття.\nА після завершення я одразу повідомлю назву наступного та час його проведення.</i>",
+        reply_markup=markup
     )
-    bot.send_sticker(message.chat.id, queries.get_sticker_id(["service", "study"]), disable_notification=True)
+
+@bot.message_handler(commands=["subscribe", "unsubscribe"])
+def set_subscription(message: Message, subscription: bool|None = None) -> str:
+    if subscription is None:
+        subscription = True if message.text == "subscribe" else False
+    try:
+        queries.set_subscription(message.chat.id, subscription)
+        reply_text: str = "Ви підписані на розсилку! ლ(╹◡╹ლ)" if subscription else "Ви відписані від розсилки! ┗( T﹏T )┛"
+        bot.reply_to(message, reply_text)
+        return reply_text
+    except:
+        bot.reply_to(message, "Не вдалося змінити значення підписки в БД.")
 
 @bot.message_handler(commands=["start"], chat_types=["private"])
 def private_start_msg(message: Message):
     assert message.from_user is not None
     bot.reply_to(message, f"<b><i>Вітаю, {message.from_user.first_name}!</i></b>\n(p≧w≦q)")
-
     if queries.is_new_user(message.from_user.id):
-        bot.send_message(message.chat.id, 
-            "Оскільки ти пишеш мені вперше – я хочу розповісти тобі, що таке розсилка <i>(у мене)</i>.\n\n"
-            "<b><i>Розсилка – це сповіщення про початок та кінець кожного заняття, яке внесене до розкладу в цей чат.\n\n"
-            "Я надсилатиму тобі повідомлення з назвою заняття, посиланням на клас та посиланням на саме заняття.\n"
-            "Якщо на занятті має відбутися щось важливе – адміністратори, швидше за все, додадуть нагадування про це.\n"
-            "Все це я обов’язково надішлю тобі </i><u>за три хвилини до початку заняття!</u><i>\n"
-            "А після завершення одного заняття я надсилатиму тобі назву наступного та час його проведення.</i></b>"
-        )
-
+        subscription_msg(message)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["happy", "study"]), disable_notification=True)
-    subscribtion_act(message)
         
 @bot.message_handler(commands=["start"], chat_types=["group", "supergroup"])
 def group_start_msg(message: Message):
     bot.reply_to(message, f"<b><i>Вітаю, {bot.get_chat(message.chat.id).title}!</i></b>\n(p≧w≦q)")
-
     if queries.is_new_user(message.chat.id):
-        bot.send_message(message.chat.id, 
-            "Оскільки у вашій групі я вперше – хочу розповісти, що таке розсилка <i>(у мене)</i>. \n\n"
-            "<b><i>Розсилка – це сповіщення про початок і кінець кожного заняття, яке занесене в розклад цього чату.\n\n"
-            "Я буду надсилати тобі повідомлення з назвою заняття, посиланням на клас і посиланням на саме заняття.\n"
-            "Якщо на занятті має відбутися щось важливе – адміни, скоріш за все, додадуть нагадування про це.\n"
-            "Усе це я обов’язково надішлю </i><u>за три хвилини до початку заняття!</u><i>\n"
-            "А після завершення одного заняття я надсилатиму назву наступного та час його проведення.</i></b>"
-        )
+        subscription_msg(message)
     if utils.is_main_group(bot.get_chat(message.chat.id).title, message.chat.id):
         bot.send_message(message.chat.id, "Ви моя основна група! Усі адміни цієї групи одразу є моїми адмінами (´▽`ʃ♡ƪ)")
-
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "happy"]), disable_notification=True)
-    subscribtion_act(message)
 
 
 @bot.message_handler(commands=["rings"])
@@ -301,6 +286,10 @@ def callback_handler(callback: CallbackQuery):
                 case _:
                     bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
                     return
+        case "subscription":
+            is_subscribed: bool = True if options == "True" else False
+            bot.answer_callback_query(callback.id, text=set_subscription(callback.message, is_subscribed), show_alert=False)
+            return
         case _:
             bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
             return
