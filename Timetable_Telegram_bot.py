@@ -102,7 +102,7 @@ logging.info("Розсилка працює.")
 @bot.message_handler(commands=["subscription"])
 def subscription_msg(message: Message):
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔔 Підписатися", callback_data="subscription True"), InlineKeyboardButton("🔕 Відписатися", callback_data="subscription False"))
+    markup.add(InlineKeyboardButton("🔔 Підписатися", callback_data="subscription /subscribe"), InlineKeyboardButton("🔕 Відписатися", callback_data="subscription /unsubscribe"))
     bot.reply_to(message,
         "<b>Підписка на розсилку</b>\n\nЦя команда керує розсилкою сповіщень у цьому чаті.\n\n"
         "<b><i>Розсилка – це повідомлення про початок та кінець кожного заняття, яке є в розкладі.</i></b>\n\n"
@@ -113,9 +113,8 @@ def subscription_msg(message: Message):
     )
 
 @bot.message_handler(commands=["subscribe", "unsubscribe"])
-def set_subscription(message: Message, subscription: bool|None = None) -> str:
-    if subscription is None:
-        subscription = True if message.text == "/subscribe" else False
+def set_subscription_msg(message: Message) -> str:
+    subscription: bool = True if message.text == "/subscribe" else False
     try:
         queries.set_subscription(message.chat.id, subscription)
         reply_text: str = "Ви підписані на розсилку! ლ(╹◡╹ლ)" if subscription else "Ви відписані від розсилки! ┗( T﹏T )┛"
@@ -123,6 +122,7 @@ def set_subscription(message: Message, subscription: bool|None = None) -> str:
         return reply_text
     except:
         bot.reply_to(message, "Не вдалося змінити значення підписки в БД.")
+        return "Помилка в БД, не вдалося змінити значення підписки"
 
 @bot.message_handler(commands=["start"], chat_types=["private"])
 def private_start_msg(message: Message):
@@ -287,8 +287,8 @@ def callback_handler(callback: CallbackQuery):
                     bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
                     return
         case "subscription":
-            is_subscribed: bool = True if options == "True" else False
-            bot.answer_callback_query(callback.id, text=set_subscription(callback.message, is_subscribed), show_alert=False)
+            callback.message.text = options
+            bot.answer_callback_query(callback.id, text=set_subscription_msg(callback.message), show_alert=False)
             return
         case _:
             bot.answer_callback_query(callback.id, text="Кнопка не знайдена Помилка!", show_alert=True)
