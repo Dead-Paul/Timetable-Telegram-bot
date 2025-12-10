@@ -185,7 +185,7 @@ def timetable_msg(message: Message):
 
 @bot.message_handler(commands=["today"])
 def today_msg(message: Message):
-    bot.reply_to(message, timetable.get_timetable(get_datetime().date()), disable_notification=True)
+    bot.reply_to(message, timetable.get_timetable(get_datetime().date(), True), disable_notification=True)
     bot.send_sticker(message.chat.id, queries.get_sticker_id(["study", "lovely"]), disable_notification=True)
 
 @bot.message_handler(commands=["tomorrow"])
@@ -196,7 +196,7 @@ def tomorrow_msg(message: Message):
         if (today + timedelta(days=1)).isoweekday() != next_work_day['id']:
             bot.reply_to(message, "Завтра <b>вихідний</b>, наступний <b>день для навчання</b> буде:")
         bot.reply_to(message,
-            timetable.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7))),
+            timetable.get_timetable(today + timedelta(days=((next_work_day["id"] - today.isoweekday()) % 7 or 7)), True),
             disable_notification=True
         )
     else:

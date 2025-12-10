@@ -105,38 +105,39 @@ class Timetable:
         
 
     @overload
-    def get_timetable(self, target_date: date) -> str:
+    def get_timetable(self, target_date: date, display_rings: bool) -> str:
         ...
 
     @overload
-    def get_timetable(self, weekday: int) -> str:
+    def get_timetable(self, weekday: int, display_rings: bool) -> str:
         ...
 
     @singledispatchmethod
     def get_timetable(self, _) -> str:
         raise ValueError("Має бути задан тільки один аргумент, або datetime, або int!")
 
-    def __get_timetable(self, weekday: TableDicts.WeekdayDict, target_date: date|None) -> str:
+    def __get_timetable(self, weekday: TableDicts.WeekdayDict, target_date: date|None, display_rings: bool = False) -> str:
         if not weekday["is_work_day"]:
             return f"{' ' * 2}<b>{weekday['name']}</b>:\n{' ' * 4}<b><i>Вихідний!</i></b> ヾ(≧▽≦*)o"
         else:
             timetable = list()
-            rings_count: int = len(self.queries.get_rings())
-            for ring_id in range(1, rings_count + 1):
-                lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday["id"], ring_id, target_date)
+            rings: list[TableDicts.RingDict] = self.queries.get_rings()
+            for ring in rings:
+                lesson: TimetableDicts.LessonDict|None = self.get_lesson(weekday["id"], ring["id"], target_date)
+                line_prefix: str = f"{ring['start'].strftime('%H:%M')} - {ring['end'].strftime('%H:%M')}" if display_rings else f"{ring['id']} {ring['name'].split(' ')[1]}"
                 if lesson is not None:
-                    if lesson["lesson_id"] == 1 and self.find_next_lesson(weekday["id"], ring_id, target_date) is None:
+                    if lesson["lesson_id"] == 1 and self.find_next_lesson(weekday["id"], ring["id"], target_date) is None:
                         break
-                    timetable.append(f"{' ' * 4}{ring_id}. {lesson['name']}")
+                    timetable.append(f"{' ' * 4}<b>{line_prefix}:</b> {lesson['name']}")
                 else:
-                    timetable.append(f"{' ' * 4}{ring_id}. Не знайдено! (≧﹏ ≦)")
+                    timetable.append(f"{' ' * 4}<b>{line_prefix}:</b> Не знайдено! (≧﹏ ≦)")
             return (f"{' ' * 2}<b>{weekday['name']}</b>:\n" +
                     ((";\n".join(timetable) + '.') if len(timetable) > 0 else f"{' ' * 4}<b><i>Вихідний!</i></b> ヾ(≧▽≦*)o"))
 
     @get_timetable.register
-    def _(self, date: date) -> str:
-        return self.__get_timetable(self.queries.get_weekdays()[date.weekday()], date)
+    def _(self, date: date, display_rings: bool = False) -> str:
+        return self.__get_timetable(self.queries.get_weekdays()[date.weekday()], date, display_rings)
 
     @get_timetable.register
-    def _(self, weekday: int) -> str:
-        return self.__get_timetable(self.queries.get_weekdays()[weekday], None)
+    def _(self, weekday: int, display_rings: bool = False) -> str:
+        return self.__get_timetable(self.queries.get_weekdays()[weekday], None, display_rings)
