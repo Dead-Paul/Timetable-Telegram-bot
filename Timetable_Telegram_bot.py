@@ -115,7 +115,7 @@ def subscription_msg(message: Message):
 @bot.message_handler(commands=["subscribe", "unsubscribe"])
 def set_subscription(message: Message, subscription: bool|None = None) -> str:
     if subscription is None:
-        subscription = True if message.text == "subscribe" else False
+        subscription = True if message.text == "/subscribe" else False
     try:
         queries.set_subscription(message.chat.id, subscription)
         reply_text: str = "Ви підписані на розсилку! ლ(╹◡╹ლ)" if subscription else "Ви відписані від розсилки! ┗( T﹏T )┛"
