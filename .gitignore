@@ -1,6 +1,9 @@
 .env
+
 /.vs
 *.pyproj
 *.sln
 __pycache__/
+
 *.log
+config.json
