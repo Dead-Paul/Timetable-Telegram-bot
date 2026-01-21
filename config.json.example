@@ -1,0 +1,8 @@
+{
+  "timezone": "TIMEZONE (EXAMPLE FORMAT: Europe/Kyiv)",
+  "first_flasher_monday": "DATE_OF_THE_FIRST_FLASHER_MONDAY",
+  "main_group": {
+    "name": "",
+    "id": -0
+  }
+}
