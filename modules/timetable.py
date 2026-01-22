@@ -1,4 +1,4 @@
-﻿from logging import Logger
+from logging import Logger
 from typing import overload, cast
 from datetime import date, datetime, timedelta
 from functools import singledispatchmethod
@@ -105,11 +105,11 @@ class Timetable:
         
 
     @overload
-    def get_timetable(self, target_date: date, display_rings: bool) -> str:
+    def get_timetable(self, target_date: date, display_rings: bool = False) -> str:
         ...
 
     @overload
-    def get_timetable(self, weekday: int, display_rings: bool) -> str:
+    def get_timetable(self, weekday: int, display_rings: bool = False) -> str:
         ...
 
     @singledispatchmethod
